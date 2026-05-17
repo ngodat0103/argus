@@ -1,3 +1,28 @@
+logging:
+  level:
+    dev.datrollout.argus.observedetection: DEBUG
 spring:
   application:
     name: argus
+  main:
+    log-startup-info: false
+
+server:
+  port: 3103
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+discovery:
+  namespaces:
+    - kube-prometheus-stack
+    - loki
+  probe:
+    timeout: 3s
+    retry-count: 2
+  cache:
+    ttl: 5m
+  port-forward:
+    enabled: true
