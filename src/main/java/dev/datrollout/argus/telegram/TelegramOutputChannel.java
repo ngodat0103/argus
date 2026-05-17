@@ -43,7 +43,6 @@ public class TelegramOutputChannel implements OutputChannel {
     private void sendFormatted(String text) throws TelegramApiException {
         SendMessage formatted = new SendMessage(userMessage.getChatId().toString(), TelegramHtmlFormatter.format(text));
         formatted.enableHtml(true);
-        formatted.enableMarkdown(true);
         try {
             telegramClient.execute(formatted);
         } catch (TelegramApiException e) {

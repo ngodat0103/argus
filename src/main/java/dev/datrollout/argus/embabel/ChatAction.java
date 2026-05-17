@@ -5,11 +5,15 @@ import com.embabel.agent.api.annotation.EmbabelComponent;
 import com.embabel.agent.api.common.ActionContext;
 import com.embabel.agent.api.common.OperationContext;
 import com.embabel.agent.prompt.persona.CoStar;
+import com.embabel.agent.tools.math.MathTools;
 import com.embabel.chat.AssistantMessage;
 import com.embabel.chat.Conversation;
 import com.embabel.chat.UserMessage;
+import dev.datrollout.argus.kubernetes.embabel.KubernetesResourceUnfoldingTool;
+import lombok.RequiredArgsConstructor;
 
 @EmbabelComponent
+@RequiredArgsConstructor
 public class ChatAction {
     private final CoStar coStar = new CoStar(
             // CONTEXT
@@ -52,6 +56,13 @@ public class ChatAction {
             - Reference live cluster state when available to tailor output to the actual environment
             - Flag potential issues (security gaps, missing resource limits, single points of failure)
               as advisory notes, not blockers
+            TOOL-CALL DISCIPLINE — non-negotiable:
+            - NEVER guess, estimate, or assume live state (CPU usage, memory consumption, pod status,
+              restart counts, quota usage, node conditions, or any calculation result).
+            - ALWAYS call the appropriate tool first and base your answer on the returned data.
+            - If a tool is available for the question at hand, calling it is mandatory — not optional.
+            - Do not say "it's likely" or "probably" about anything a tool can verify. Call the tool.
+            - For any arithmetic or numeric computation, call the math tool — never compute in your head.
             """,
 
             // TONE
@@ -88,11 +99,16 @@ public class ChatAction {
             """
     );
 
+    private final KubernetesResourceUnfoldingTool kubernetesResourceUnfoldingTool;
+    private final MathTools mathTools = new MathTools();
+
     @Action(trigger = UserMessage.class,clearBlackboard = true)
     public void defaultChat(Conversation conversation, OperationContext operationContext, ActionContext actionContext) {
         AssistantMessage assistantMessage = operationContext.ai()
                 .withDefaultLlm()
                 .withPromptContributor(coStar)
+                .withTool(this.mathTools.getUnfoldingTool())
+                .withTool(kubernetesResourceUnfoldingTool)
                 .respond(conversation.getMessages());
         actionContext.sendAndSave(assistantMessage);
     }
