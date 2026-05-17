@@ -32,8 +32,12 @@ repositories {
 dependencies {
     // Embabel
     implementation("com.embabel.agent:embabel-agent-starter-deepseek:${embabelAgentVersion}")
+
+
     // chat
-    implementation("com.discord4j:discord4j-core:3.3.0")
+    implementation("org.telegram:telegrambots-springboot-longpolling-starter:9.6.0")
+    implementation("org.telegram:telegrambots-client:9.5.0")
+
 
     // Persistence
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")

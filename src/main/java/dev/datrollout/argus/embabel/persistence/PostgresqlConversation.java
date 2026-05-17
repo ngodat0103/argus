@@ -5,12 +5,12 @@ import com.embabel.chat.*;
 import com.embabel.common.ai.prompt.PromptContributor;
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jspecify.annotations.NonNull;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -41,11 +41,6 @@ public class PostgresqlConversation implements Conversation {
     @Getter
     private String chatPlatformId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "chat_platform", nullable = false, length = 32)
-    @Getter
-    private ChatPlatform chatPlatform;
-
     @Column(name = "created_at", nullable = false)
     @Getter
     private OffsetDateTime createdAt;
@@ -69,12 +64,10 @@ public class PostgresqlConversation implements Conversation {
 
     public PostgresqlConversation(ConversationJpaRepository conversationJpaRepository,
             String chatPlatformId,
-            String conversationId,
-            ChatPlatform chatPlatform) {
+            String conversationId) {
         this.conversationJpaRepository = conversationJpaRepository;
         this.chatPlatformId = chatPlatformId;
         this.conversationId = conversationId;
-        this.chatPlatform = chatPlatform;
         this.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
         this.messages = new LinkedList<>();
     }

@@ -25,10 +25,8 @@ public class PostgresqlConversationFactory implements ConversationFactory {
 
     @Override
     public @NotNull Conversation create(@NotNull String conversationId) {
-        String chatPlatformId = extractChatPlatformId(conversationId);
-        ChatPlatform chatPlatform = ChatPlatform.fromConversationId(chatPlatformId);
         PostgresqlConversation conversation = new PostgresqlConversation(
-                this.conversationJpaRepository, chatPlatformId, conversationId, chatPlatform);
+                this.conversationJpaRepository, conversationId, conversationId);
         this.conversationJpaRepository.save(conversation);
         return conversation;
     }
@@ -49,17 +47,5 @@ public class PostgresqlConversationFactory implements ConversationFactory {
         PostgresqlConversation conversation = conversations.getFirst();
         conversation.setConversationJpaRepository(this.conversationJpaRepository);
         return conversation;
-    }
-
-    /**
-     * Extracts the chat platform ID by stripping the trailing date suffix (_dd-MM-yyyy).
-     */
-    static String extractChatPlatformId(String conversationId) {
-        int lastUnderscore = conversationId.lastIndexOf('_');
-        if (lastUnderscore < 0) {
-            throw new IllegalArgumentException(
-                    "conversationId must contain a date suffix: " + conversationId);
-        }
-        return conversationId.substring(0, lastUnderscore);
     }
 }
