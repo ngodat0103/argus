@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argus
+  namespace: argus
+  labels:
+    app.kubernetes.io/name: argus
+---
+# ClusterRole grants read access to cluster-wide resources that Argus
+# inspects via its Fabric8 Kubernetes client (workloads, events, logs,
+# networking, scheduling diagnostics, and the metrics API).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argus
+  labels:
+    app.kubernetes.io/name: argus
+rules:
+  # Core workload & scheduling
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - nodes
+      - services
+      - endpoints
+      - events
+      - namespaces
+      - replicationcontrollers
+      - persistentvolumes
+      - persistentvolumeclaims
+    verbs: ["get", "list", "watch"]
+
+  # Apps workloads
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - statefulsets
+      - daemonsets
+      - replicasets
+    verbs: ["get", "list", "watch"]
+
+  # Networking
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: ["get", "list", "watch"]
+
+  # Metrics API (kubectl top / HPA / MetricsResourceTool)
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - nodes
+      - pods
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argus
+  labels:
+    app.kubernetes.io/name: argus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argus
+subjects:
+  - kind: ServiceAccount
+    name: argus
+    namespace: argus
