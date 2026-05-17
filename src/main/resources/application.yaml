@@ -8,7 +8,8 @@ spring:
   application:
     name: argus
   main:
-    log-startup-info: true
+    log-startup-info: false
+    banner-mode: off
 server:
   port: 3103
 
