@@ -1,5 +1,13 @@
 name: argus-dev-environment
 services:
+  argus:
+    profiles: ["ci"]
+    image: ghcr.io/ngodat0103/argus:${VERSION:-latest}
+    expose:
+      - 3103
+    build:
+      context: .
+      dockerfile: Dockerfile
   postgres:
     image: postgres:16
     container_name: argus-dev-postgres
