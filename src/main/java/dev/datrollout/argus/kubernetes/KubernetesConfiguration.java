@@ -18,8 +18,7 @@ public class KubernetesConfiguration {
                 .name("kubernetesClient",0)
                 .factory();
         ExecutorService executorService = Executors.newFixedThreadPool(10,threadFactory);
-        KubernetesClient kubernetesClient =  new KubernetesClientBuilder()
+        return new KubernetesClientBuilder()
                 .withTaskExecutor(executorService).build();
-        return kubernetesClient;
     }
 }

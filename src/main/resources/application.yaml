@@ -12,6 +12,17 @@ spring:
 server:
   port: 3103
 
+embabel:
+  agent:
+    platform:
+      models:
+        deepseek:
+          api-key: ${DEEPSEEK_API_KEY}
+          base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+  models:
+    default-llm: deepseek-chat
+    llms:
+      reasoning: deepseek-reasoner
 management:
   endpoints:
     web:
