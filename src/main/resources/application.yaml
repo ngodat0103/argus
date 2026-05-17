@@ -32,6 +32,7 @@ embabel:
         deepseek:
           api-key: ${DEEPSEEK_API_KEY}
           base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+          max-attempts: 20
       process-repository:
         window-size: 50
       llm-operations:
@@ -40,6 +41,8 @@ embabel:
           fixed-backoff-millis: 5
         prompts:
           default-timeout: 300s
+      tools:
+        lazy-init: true
   models:
     default-llm: deepseek-chat
     llms:

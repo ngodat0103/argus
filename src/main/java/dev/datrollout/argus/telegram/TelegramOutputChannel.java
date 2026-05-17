@@ -8,6 +8,7 @@ import com.embabel.chat.AssistantMessage;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -41,15 +42,17 @@ public class TelegramOutputChannel implements OutputChannel {
     }
 
     private void sendFormatted(String text) throws TelegramApiException {
-        SendMessage formatted = new SendMessage(userMessage.getChatId().toString(), TelegramHtmlFormatter.format(text));
-        formatted.enableHtml(true);
+        SendMessage formatted = new SendMessage(
+                userMessage.getChatId().toString(),
+                TelegramMarkdownV2Formatter.format(text));
+        formatted.setParseMode(ParseMode.MARKDOWNV2);
         try {
             telegramClient.execute(formatted);
         } catch (TelegramApiException e) {
             if (!isEntityParseError(e)) {
                 throw e;
             }
-            log.warn("Telegram rejected HTML formatting, sending as plain text", e);
+            log.warn("Telegram rejected MarkdownV2 formatting, sending as plain text", e);
             telegramClient.execute(new SendMessage(userMessage.getChatId().toString(), text));
         }
     }

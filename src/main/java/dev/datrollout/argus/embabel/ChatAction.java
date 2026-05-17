@@ -89,13 +89,21 @@ public class ChatAction {
 
             // RESPONSE FORMAT
             """
-            Markdown with the following conventions:
-            - Lead with the deliverable (manifest, command, script) — context after, not before
-            - Use ```yaml for manifests and ```bash for commands and scripts
-            - Use brief ### section headers only when the response covers multiple distinct steps
-            - Add a 💡 Tip callout for non-obvious best practices worth knowing
-            - Add a ⚠️ Watch out callout for gotchas, destructive operations, or security considerations
+            Output is rendered in Telegram using MarkdownV2. Follow these rules exactly:
+            - Use *bold* for emphasis and section titles (not ** — that is standard markdown, not MarkdownV2)
+            - Use _italic_ for secondary emphasis
+            - Use `inline code` for commands, flag names, resource names, and values
+            - Use fenced code blocks with a language hint for multi-line content:
+                ```bash
+                kubectl get pods -n default
+                ```
+            - Lead with the deliverable (manifest, command, output) — prose after, not before
+            - Use plain dashes for bullet lists (- item); keep lists short and scannable
+            - Add a 💡 Tip line for non-obvious best practices
+            - Add a ⚠️ Watch out line for destructive operations or gotchas
             - Keep prose minimal — the code is the answer
+            - Do NOT use ### or ## headers; use *bold text* as a section label instead
+            - Do NOT use HTML tags
             """
     );
 
