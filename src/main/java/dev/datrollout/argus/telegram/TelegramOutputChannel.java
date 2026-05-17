@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
@@ -19,14 +21,29 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 public class TelegramOutputChannel implements OutputChannel {
     private final Message userMessage;
     private final TelegramClient telegramClient;
+    private Integer progressMessageId = null;
 
     @Override
     public void send(@NonNull OutputChannelEvent outputChannelEvent) {
 
         if(outputChannelEvent instanceof ProgressOutputChannelEvent progressOutputChannelEvent) {
             String progressMessage = progressOutputChannelEvent.getMessage();
-           log.info("send progress here, should be ephemeral");
-            // Todo Implement here
+            log.info("Sending progress message: {}", progressMessage);
+            try {
+                if (progressMessageId == null) {
+                    Message sent = telegramClient.execute(
+                            new SendMessage(userMessage.getChatId().toString(), progressMessage));
+                    progressMessageId = sent.getMessageId();
+                } else {
+                    telegramClient.execute(EditMessageText.builder()
+                            .chatId(userMessage.getChatId().toString())
+                            .messageId(progressMessageId)
+                            .text(progressMessage)
+                            .build());
+                }
+            } catch (TelegramApiException e) {
+                log.warn("Failed to send/update progress message", e);
+            }
         }
         else if(outputChannelEvent instanceof MessageOutputChannelEvent messageOutputChannelEvent){
             if(messageOutputChannelEvent.getMessage() instanceof AssistantMessage assistantMessage) {
@@ -36,6 +53,18 @@ public class TelegramOutputChannel implements OutputChannel {
                     sendFormatted(text);
                 } catch (TelegramApiException e) {
                     throw new RuntimeException(e);
+                }
+                if (progressMessageId != null) {
+                    try {
+                        telegramClient.execute(DeleteMessage.builder()
+                                .chatId(userMessage.getChatId().toString())
+                                .messageId(progressMessageId)
+                                .build());
+                    } catch (TelegramApiException e) {
+                        log.warn("Failed to delete progress message {}", progressMessageId, e);
+                    } finally {
+                        progressMessageId = null;
+                    }
                 }
             }
         }

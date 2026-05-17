@@ -300,6 +300,268 @@ public class MetricsResourceTool {
     }
 
     @LlmTool(
+            name = "clusterResourceSummary",
+            description = """
+                    Use this tool when the user asks any variant of "how much resource do I have",
+                    "what is the cluster capacity", "show me total CPU/memory", or "how much is free/used".
+                    Returns a pre-calculated, human-readable table showing per-node allocatable capacity,
+                    live usage from metrics-server, and free headroom for both CPU and memory,
+                    followed by cluster-wide totals. All values are normalised to millicores (CPU)
+                    and MiB (memory) so no arithmetic is needed.
+                    """
+    )
+    public String clusterResourceSummary() {
+        List<Node> nodes = kubernetesClient.nodes().list().getItems();
+        if (nodes.isEmpty()) {
+            return "ERROR: no nodes found in the cluster.";
+        }
+
+        // Fetch live node metrics (best-effort; may be absent)
+        Map<String, long[]> liveByNode = new HashMap<>(); // [cpuMillis, memBytes]
+        try {
+            List<NodeMetrics> nmList = kubernetesClient.top().nodes().metrics().getItems();
+            for (NodeMetrics nm : nmList) {
+                long cpuM = parseToMillicores(nm.getUsage().get("cpu"));
+                long memB = parseToBytes(nm.getUsage().get("memory"));
+                liveByNode.put(nm.getMetadata().getName(), new long[]{cpuM, memB});
+            }
+        } catch (KubernetesClientException e) {
+            log.debug("metrics.k8s.io node metrics unavailable for clusterResourceSummary", e);
+        }
+
+        boolean hasLiveMetrics = !liveByNode.isEmpty();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== CLUSTER RESOURCE SUMMARY ===\n");
+        if (!hasLiveMetrics) {
+            sb.append("NOTE: metrics-server is unavailable — live usage columns will show n/a.\n");
+        }
+        sb.append("\n");
+
+        // Header
+        sb.append(String.format("%-40s  %12s  %12s  %12s  %12s  %12s  %12s  %6s  %6s%n",
+                "NODE",
+                "ALLOC-CPU(m)", "USED-CPU(m)", "FREE-CPU(m)",
+                "ALLOC-MEM(MiB)", "USED-MEM(MiB)", "FREE-MEM(MiB)",
+                "CPU%", "MEM%"));
+        sb.repeat("-", 140).append("\n");
+        long totalAllocCpuM = 0, totalUsedCpuM = 0;
+        long totalAllocMemB = 0, totalUsedMemB = 0;
+
+        for (Node node : nodes) {
+            String nName = node.getMetadata().getName();
+            Map<String, Quantity> allocatable = Optional.ofNullable(node.getStatus())
+                    .map(NodeStatus::getAllocatable).orElse(Collections.emptyMap());
+
+            long allocCpuM = parseToMillicores(allocatable.get("cpu"));
+            long allocMemB = parseToBytes(allocatable.get("memory"));
+
+            long[] live = liveByNode.get(nName);
+            long usedCpuM = live != null ? live[0] : -1;
+            long usedMemB = live != null ? live[1] : -1;
+            long freeCpuM = usedCpuM >= 0 ? allocCpuM - usedCpuM : -1;
+            long freeMemB = usedMemB >= 0 ? allocMemB - usedMemB : -1;
+
+            String cpuPct  = usedCpuM >= 0 && allocCpuM > 0
+                    ? String.format("%5.1f%%", 100.0 * usedCpuM / allocCpuM) : "  n/a";
+            String memPct  = usedMemB >= 0 && allocMemB > 0
+                    ? String.format("%5.1f%%", 100.0 * usedMemB / allocMemB) : "  n/a";
+
+            sb.append(String.format("%-40s  %12d  %12s  %12s  %12d  %12s  %12s  %6s  %6s%n",
+                    nName,
+                    allocCpuM,
+                    usedCpuM >= 0 ? usedCpuM : "n/a",
+                    freeCpuM >= 0 ? freeCpuM : "n/a",
+                    bytesToMiB(allocMemB),
+                    usedMemB >= 0 ? bytesToMiB(usedMemB) : "n/a",
+                    freeMemB >= 0 ? bytesToMiB(freeMemB) : "n/a",
+                    cpuPct, memPct));
+
+            totalAllocCpuM += allocCpuM;
+            totalAllocMemB += allocMemB;
+            if (usedCpuM >= 0) totalUsedCpuM += usedCpuM;
+            if (usedMemB >= 0) totalUsedMemB += usedMemB;
+        }
+
+        // Totals row
+        sb.repeat("-", 140).append("\n");
+        String totalCpuPct = hasLiveMetrics && totalAllocCpuM > 0
+                ? String.format("%5.1f%%", 100.0 * totalUsedCpuM / totalAllocCpuM) : "  n/a";
+        String totalMemPct = hasLiveMetrics && totalAllocMemB > 0
+                ? String.format("%5.1f%%", 100.0 * totalUsedMemB / totalAllocMemB) : "  n/a";
+
+        sb.append(String.format("%-40s  %12d  %12s  %12s  %12d  %12s  %12s  %6s  %6s%n",
+                "CLUSTER TOTAL (" + nodes.size() + " nodes)",
+                totalAllocCpuM,
+                hasLiveMetrics ? String.valueOf(totalUsedCpuM) : "n/a",
+                hasLiveMetrics ? String.valueOf(totalAllocCpuM - totalUsedCpuM) : "n/a",
+                bytesToMiB(totalAllocMemB),
+                hasLiveMetrics ? String.valueOf(bytesToMiB(totalUsedMemB)) : "n/a",
+                hasLiveMetrics ? String.valueOf(bytesToMiB(totalAllocMemB) - bytesToMiB(totalUsedMemB)) : "n/a",
+                totalCpuPct, totalMemPct));
+
+        sb.append("\n[LEGEND] All CPU values in millicores (1000m = 1 core). Memory in MiB (1024 MiB = 1 GiB).\n");
+        sb.append("         Allocatable = node capacity minus kubernetes system overhead.\n");
+        if (!hasLiveMetrics) {
+            sb.append("         Install metrics-server to enable live usage: ");
+            sb.append("kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml\n");
+        }
+
+        return sb.toString();
+    }
+
+    @LlmTool(
+            name = "estimatePodFitCount",
+            description = """
+                    Use this tool when the user asks how many pods of a given size can be allocated/scheduled
+                    right now, e.g. "how many Java pods (500 MB each)", "how many pods with 2 CPU cores",
+                    "can I run 50 more pods that need 200m CPU and 256 MiB".
+                    Pass the per-pod CPU request in millicores (e.g. 500 for 0.5 core; 0 = no CPU constraint)
+                    and per-pod memory request in MiB (e.g. 500 for 500 MiB; 0 = no memory constraint).
+                    Returns a per-node breakdown and cluster total showing how many pods can still be scheduled,
+                    which resource is the binding constraint, and (when metrics-server is available) an
+                    optimistic count based on live usage instead of declared requests.
+                    """
+    )
+    public String estimatePodFitCount(long podCpuMillicores, long podMemoryMiB) {
+        if (podCpuMillicores <= 0 && podMemoryMiB <= 0) {
+            return "ERROR: provide at least one of podCpuMillicores or podMemoryMiB greater than 0.";
+        }
+
+        List<Node> nodes = kubernetesClient.nodes().list().getItems();
+        if (nodes.isEmpty()) {
+            return "ERROR: no nodes found in the cluster.";
+        }
+
+        // Compute scheduled (requested) CPU+memory already committed per node
+        // by summing all Running/Pending pod requests — this is what the scheduler sees.
+        Map<String, long[]> scheduledByNode = new HashMap<>(); // [cpuM, memBytes]
+        List<Pod> allPods = kubernetesClient.pods().inAnyNamespace().list().getItems();
+        for (Pod pod : allPods) {
+            String phase = Optional.ofNullable(pod.getStatus()).map(PodStatus::getPhase).orElse("");
+            if ("Succeeded".equals(phase) || "Failed".equals(phase)) continue;
+            String nodeName = Optional.ofNullable(pod.getSpec()).map(PodSpec::getNodeName).orElse(null);
+            if (nodeName == null || nodeName.isBlank()) continue;
+
+            long cpuM = 0, memB = 0;
+            List<Container> containers = Optional.ofNullable(pod.getSpec())
+                    .map(PodSpec::getContainers).orElse(Collections.emptyList());
+            for (Container c : containers) {
+                Map<String, Quantity> req = Optional.ofNullable(c.getResources())
+                        .map(ResourceRequirements::getRequests).orElse(Collections.emptyMap());
+                cpuM += parseToMillicores(req.get("cpu"));
+                memB += parseToBytes(req.get("memory"));
+            }
+            long[] acc = scheduledByNode.computeIfAbsent(nodeName, k -> new long[]{0, 0});
+            acc[0] += cpuM;
+            acc[1] += memB;
+        }
+
+        // Fetch live usage (best-effort)
+        Map<String, long[]> liveByNode = new HashMap<>();
+        try {
+            List<NodeMetrics> nmList = kubernetesClient.top().nodes().metrics().getItems();
+            for (NodeMetrics nm : nmList) {
+                liveByNode.put(nm.getMetadata().getName(), new long[]{
+                        parseToMillicores(nm.getUsage().get("cpu")),
+                        parseToBytes(nm.getUsage().get("memory"))
+                });
+            }
+        } catch (KubernetesClientException e) {
+            log.debug("metrics.k8s.io unavailable for estimatePodFitCount", e);
+        }
+
+        boolean hasLive = !liveByNode.isEmpty();
+        long podMemBytes = podMemoryMiB * 1024L * 1024;
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== POD FIT ESTIMATE ===\n");
+        sb.append(String.format("Pod profile: cpu=%s  memory=%s%n",
+                podCpuMillicores > 0 ? podCpuMillicores + "m" : "(not constrained)",
+                podMemoryMiB > 0 ? podMemoryMiB + " MiB" : "(not constrained)"));
+        sb.append("Headroom basis: allocatable − sum of scheduled pod requests (scheduler view)\n");
+        if (hasLive) sb.append("Optimistic basis: allocatable − live usage (metrics-server)\n");
+        sb.append("\n");
+
+        // Table header
+        String liveHeader = hasLive ? String.format("  %10s  %10s", "LIVE-FREE-C", "LIVE-FREE-M") : "";
+        String liveFitHdr = hasLive ? String.format("  %10s  %10s", "LIVE-FIT", "BINDING") : "";
+        sb.append(String.format("%-40s  %10s  %10s  %10s  %10s  %12s%s%s%n",
+                "NODE", "FREE-CPU(m)", "FREE-MEM(MiB)", "FIT-BY-CPU", "FIT-BY-MEM", "SCHED-FIT" + " (binding)", liveHeader, liveFitHdr));
+        sb.repeat("-", hasLive ? 180 : 120).append("\n");
+
+        long totalSchedFit = 0;
+        long totalLiveFit  = 0;
+
+        for (Node node : nodes) {
+            String nName = node.getMetadata().getName();
+            Map<String, Quantity> alloc = Optional.ofNullable(node.getStatus())
+                    .map(NodeStatus::getAllocatable).orElse(Collections.emptyMap());
+
+            long allocCpuM = parseToMillicores(alloc.get("cpu"));
+            long allocMemB = parseToBytes(alloc.get("memory"));
+
+            long[] sched = scheduledByNode.getOrDefault(nName, new long[]{0, 0});
+            long freeCpuM = Math.max(0, allocCpuM - sched[0]);
+            long freeMemB = Math.max(0, allocMemB - sched[1]);
+
+            long fitByCpu = podCpuMillicores > 0 ? freeCpuM / podCpuMillicores : Long.MAX_VALUE;
+            long fitByMem = podMemBytes > 0 ? freeMemB / podMemBytes : Long.MAX_VALUE;
+            long schedFit = Math.min(fitByCpu, fitByMem);
+            String binding = schedFit == fitByCpu && podCpuMillicores > 0 ? "CPU" : "MEM";
+            if (schedFit == Long.MAX_VALUE) schedFit = 0;
+
+            totalSchedFit += schedFit;
+
+            String liveExtra = "";
+            String liveFitExtra = "";
+            if (hasLive) {
+                long[] live = liveByNode.get(nName);
+                if (live != null) {
+                    long lfreeCpuM = Math.max(0, allocCpuM - live[0]);
+                    long lfreeMemB = Math.max(0, allocMemB - live[1]);
+                    long lfitByCpu = podCpuMillicores > 0 ? lfreeCpuM / podCpuMillicores : Long.MAX_VALUE;
+                    long lfitByMem = podMemBytes > 0 ? lfreeMemB / podMemBytes : Long.MAX_VALUE;
+                    long liveFit = Math.min(lfitByCpu, lfitByMem);
+                    String lbinding = liveFit == lfitByCpu && podCpuMillicores > 0 ? "CPU" : "MEM";
+                    if (liveFit == Long.MAX_VALUE) liveFit = 0;
+                    totalLiveFit += liveFit;
+                    liveExtra = String.format("  %10d  %10d", lfreeCpuM, bytesToMiB(lfreeMemB));
+                    liveFitExtra = String.format("  %10d  %10s", liveFit, lbinding);
+                } else {
+                    liveExtra = String.format("  %10s  %10s", "n/a", "n/a");
+                    liveFitExtra = String.format("  %10s  %10s", "n/a", "n/a");
+                }
+            }
+
+            sb.append(String.format("%-40s  %10d  %10d  %10s  %10s  %12s%s%s%n",
+                    nName,
+                    freeCpuM,
+                    bytesToMiB(freeMemB),
+                    podCpuMillicores > 0 ? fitByCpu : "  —",
+                    podMemBytes > 0 ? fitByMem : "  —",
+                    schedFit + " (" + binding + ")",
+                    liveExtra, liveFitExtra));
+        }
+
+        // Totals
+        sb.repeat("-", hasLive ? 180 : 120).append("\n");
+        String liveTotalStr = hasLive ? String.format("  Optimistic (live-usage): %d pods", totalLiveFit) : "";
+        sb.append(String.format("CLUSTER TOTAL — schedulable: %d pods%s%n", totalSchedFit, liveTotalStr));
+
+        sb.append("\n[NOTE]\n");
+        sb.append("  'Schedulable' headroom = allocatable − declared requests of running/pending pods.\n");
+        sb.append("  This matches what kubectl scheduler will accept. Pods with no requests set\n");
+        sb.append("  are BestEffort and consume 0 scheduler headroom but can still OOM the node.\n");
+        if (hasLive) {
+            sb.append("  'Optimistic' headroom = allocatable − actual live CPU/memory consumed.\n");
+            sb.append("  Use this only if you know your pods are heavily under their requested limits.\n");
+        }
+
+        return sb.toString();
+    }
+
+    @LlmTool(
             name = "currentResourceUsage",
             description = """
                     Use this tool to get a live snapshot of CPU and memory consumption for pods and nodes
@@ -711,6 +973,59 @@ public class MetricsResourceTool {
         // This is approximate; exact parsing would need a full quantity parser.
         s = s.replaceAll("[^0-9.]", "");
         return s.isBlank() ? 0 : Double.parseDouble(s);
+    }
+
+    /**
+     * Parses a Kubernetes CPU Quantity into millicores.
+     * Handles: "4" → 4000m, "4000m" → 4000, "0.5" → 500, "500m" → 500
+     */
+    private long parseToMillicores(Quantity q) {
+        if (q == null) return 0;
+        String s = q.toString().trim();
+        if (s.isBlank()) return 0;
+        try {
+            if (s.endsWith("m")) {
+                return Long.parseLong(s.substring(0, s.length() - 1));
+            }
+            // fractional cores (e.g. "0.5")
+            return Math.round(Double.parseDouble(s) * 1000);
+        } catch (NumberFormatException e) {
+            log.debug("Could not parse CPU quantity '{}': {}", s, e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Parses a Kubernetes memory Quantity into bytes.
+     * Handles: Ki, Mi, Gi, Ti, Pi, Ei, K, M, G, T, P, E, and plain bytes.
+     */
+    private long parseToBytes(Quantity q) {
+        if (q == null) return 0;
+        String s = q.toString().trim();
+        if (s.isBlank()) return 0;
+        try {
+            if (s.endsWith("Ki")) return Long.parseLong(s.replace("Ki", "")) * 1024L;
+            if (s.endsWith("Mi")) return Long.parseLong(s.replace("Mi", "")) * 1024L * 1024;
+            if (s.endsWith("Gi")) return Long.parseLong(s.replace("Gi", "")) * 1024L * 1024 * 1024;
+            if (s.endsWith("Ti")) return Long.parseLong(s.replace("Ti", "")) * 1024L * 1024 * 1024 * 1024;
+            if (s.endsWith("Pi")) return Long.parseLong(s.replace("Pi", "")) * 1024L * 1024 * 1024 * 1024 * 1024;
+            if (s.endsWith("Ei")) return Long.parseLong(s.replace("Ei", "")) * 1024L * 1024 * 1024 * 1024 * 1024 * 1024;
+            if (s.endsWith("K"))  return Long.parseLong(s.replace("K",  "")) * 1000L;
+            if (s.endsWith("M"))  return Long.parseLong(s.replace("M",  "")) * 1000L * 1000;
+            if (s.endsWith("G"))  return Long.parseLong(s.replace("G",  "")) * 1000L * 1000 * 1000;
+            if (s.endsWith("T"))  return Long.parseLong(s.replace("T",  "")) * 1000L * 1000 * 1000 * 1000;
+            if (s.endsWith("P"))  return Long.parseLong(s.replace("P",  "")) * 1000L * 1000 * 1000 * 1000 * 1000;
+            if (s.endsWith("E"))  return Long.parseLong(s.replace("E",  "")) * 1000L * 1000 * 1000 * 1000 * 1000 * 1000;
+            // plain bytes or scientific notation from metrics-server (e.g. "123456789n" nanocores won't appear for memory)
+            return Long.parseLong(s);
+        } catch (NumberFormatException e) {
+            log.debug("Could not parse memory quantity '{}': {}", s, e.getMessage());
+            return 0;
+        }
+    }
+
+    private long bytesToMiB(long bytes) {
+        return bytes / (1024L * 1024);
     }
 
     private String metricsUnavailableHint(KubernetesClientException e) {

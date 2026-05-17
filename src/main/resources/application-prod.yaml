@@ -1,0 +1,14 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+  config:
+    activate:
+      on-profile: prod
+discovery:
+  port-forward:
+    enabled: false
+  namespaces: ["loki","kube-prometheus-stack"]
+logging:
+  level:
+    root: info

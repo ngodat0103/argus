@@ -10,6 +10,7 @@ import com.embabel.chat.AssistantMessage;
 import com.embabel.chat.Conversation;
 import com.embabel.chat.UserMessage;
 import dev.datrollout.argus.kubernetes.embabel.KubernetesResourceUnfoldingTool;
+import dev.datrollout.argus.kubernetes.embabel.NetworkingDebuggingUnfoldingTool;
 import lombok.RequiredArgsConstructor;
 
 @EmbabelComponent
@@ -108,15 +109,15 @@ public class ChatAction {
     );
 
     private final KubernetesResourceUnfoldingTool kubernetesResourceUnfoldingTool;
-    private final MathTools mathTools = new MathTools();
+    private final NetworkingDebuggingUnfoldingTool networkingDebuggingUnfoldingTool;
 
     @Action(trigger = UserMessage.class,clearBlackboard = true)
     public void defaultChat(Conversation conversation, OperationContext operationContext, ActionContext actionContext) {
         AssistantMessage assistantMessage = operationContext.ai()
                 .withDefaultLlm()
                 .withPromptContributor(coStar)
-                .withTool(this.mathTools.getUnfoldingTool())
                 .withTool(kubernetesResourceUnfoldingTool)
+                .withTool(networkingDebuggingUnfoldingTool)
                 .respond(conversation.getMessages());
         actionContext.sendAndSave(assistantMessage);
     }
