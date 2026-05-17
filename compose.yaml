@@ -8,8 +8,8 @@ services:
       POSTGRES_USER: argus
       POSTGRES_PASSWORD: argus
       POSTGRES_DB: argus
-    expose:
-      - 5432
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:

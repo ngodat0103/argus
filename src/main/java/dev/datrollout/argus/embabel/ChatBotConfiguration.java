@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 public class ChatBotConfiguration {
     @Bean
     Chatbot chatbot(ConversationFactory conversationFactory, AgentPlatform agentPlatform){
-        return AgentProcessChatbot.utilityFromPlatform(agentPlatform,conversationFactory);
+       Chatbot chatbot = AgentProcessChatbot.utilityFromPlatform(agentPlatform,conversationFactory);
+       return chatbot;
     }
 }

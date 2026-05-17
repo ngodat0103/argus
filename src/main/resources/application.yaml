@@ -10,6 +10,18 @@ spring:
   main:
     log-startup-info: false
     banner-mode: off
+  datasource:
+    url: jdbc:postgresql://localhost:5432/argus
+    username: ${POSTGRES_USER:argus}
+    password: ${POSTGRES_PASSWORD:argus}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+      hibernate.jdbc.time_zone: UTC
+    open-in-view: false
 server:
   port: 3103
 
