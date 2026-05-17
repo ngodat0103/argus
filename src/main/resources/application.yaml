@@ -1,12 +1,14 @@
 logging:
-  level:
-    dev.datrollout.argus.observedetection: DEBUG
+  charset:
+    console: UTF-8
+  pattern:
+    console: "%clr(%d{${LOG_DATEFORMAT_PATTERN:-dd-MM-yyyy HH:mm:ss.SSS}}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([%t]){faint} %clr(%logger{0}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
+    dateformat: "dd-MM-yyyy HH:mm:ss.SSS"
 spring:
   application:
     name: argus
   main:
-    log-startup-info: false
-
+    log-startup-info: true
 server:
   port: 3103
 
