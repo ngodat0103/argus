@@ -31,6 +31,13 @@ rules:
       - persistentvolumeclaims
     verbs: ["get", "list", "watch"]
 
+  # Batch workloads
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch"]
+
   # Apps workloads
   - apiGroups: ["apps"]
     resources:
