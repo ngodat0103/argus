@@ -9,12 +9,21 @@ import com.embabel.agent.tools.math.MathTools;
 import com.embabel.chat.AssistantMessage;
 import com.embabel.chat.Conversation;
 import com.embabel.chat.UserMessage;
+import com.embabel.common.ai.model.Thinking;
+import dev.datrollout.argus.kubernetes.embabel.EventsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.KubernetesResourceUnfoldingTool;
+import dev.datrollout.argus.kubernetes.embabel.LogsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.NetworkingDebuggingUnfoldingTool;
+import dev.datrollout.argus.kubernetes.embabel.SchedulingDiagnosticsUnfoldingTool;
+import dev.datrollout.argus.kubernetes.embabel.WorkloadStateUnfoldingTool;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Objects;
 
 @EmbabelComponent
 @RequiredArgsConstructor
+@Slf4j
 public class ChatAction {
     private final CoStar coStar = new CoStar(
             // CONTEXT
@@ -110,15 +119,23 @@ public class ChatAction {
 
     private final KubernetesResourceUnfoldingTool kubernetesResourceUnfoldingTool;
     private final NetworkingDebuggingUnfoldingTool networkingDebuggingUnfoldingTool;
+    private final LogsUnfoldingTool logsUnfoldingTool;
+    private final EventsUnfoldingTool eventsUnfoldingTool;
+    private final WorkloadStateUnfoldingTool workloadStateUnfoldingTool;
+    private final SchedulingDiagnosticsUnfoldingTool schedulingDiagnosticsUnfoldingTool;
 
     @Action(trigger = UserMessage.class,clearBlackboard = true)
     public void defaultChat(Conversation conversation, OperationContext operationContext, ActionContext actionContext) {
-        AssistantMessage assistantMessage = operationContext.ai()
-                .withDefaultLlm()
+       var assistantMessage = operationContext.ai()
+               .withLlmByRole("reasoning")
                 .withPromptContributor(coStar)
                 .withTool(kubernetesResourceUnfoldingTool)
                 .withTool(networkingDebuggingUnfoldingTool)
+                .withTool(logsUnfoldingTool)
+                .withTool(eventsUnfoldingTool)
+                .withTool(workloadStateUnfoldingTool)
+                .withTool(schedulingDiagnosticsUnfoldingTool)
                 .respond(conversation.getMessages());
-        actionContext.sendAndSave(assistantMessage);
+        actionContext.sendAndSave(Objects.requireNonNull(assistantMessage));
     }
 }
