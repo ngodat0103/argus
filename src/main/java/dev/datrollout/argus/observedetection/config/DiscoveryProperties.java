@@ -1,10 +1,9 @@
 package dev.datrollout.argus.observedetection.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.DefaultValue;
-
 import java.time.Duration;
 import java.util.List;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties(prefix = "discovery")
 public record DiscoveryProperties(
@@ -12,21 +11,17 @@ public record DiscoveryProperties(
         ProbeProperties probe,
         SecurityProperties security,
         CacheProperties cache,
-        PortForwardProperties portForward
-) {
+        PortForwardProperties portForward) {
 
     public record ProbeProperties(
             @DefaultValue("3s") Duration timeout,
-            @DefaultValue("2") int retryCount
-    ) {}
+            @DefaultValue("2") int retryCount) {}
 
     public record SecurityProperties(
-            @DefaultValue("10.0.0.0/8,172.16.0.0/12,192.168.0.0/16") List<String> allowedCidrs
-    ) {}
+            @DefaultValue("10.0.0.0/8,172.16.0.0/12,192.168.0.0/16")
+            List<String> allowedCidrs) {}
 
-    public record CacheProperties(
-            @DefaultValue("5m") Duration ttl
-    ) {}
+    public record CacheProperties(@DefaultValue("5m") Duration ttl) {}
 
     /**
      * Controls on-demand port-forward tunnels for local development.
@@ -35,6 +30,5 @@ public record DiscoveryProperties(
      */
     public record PortForwardProperties(
             /** Set to {@code true} when running outside the cluster (local dev). */
-            @DefaultValue("false") boolean enabled
-    ) {}
+            @DefaultValue("false") boolean enabled) {}
 }

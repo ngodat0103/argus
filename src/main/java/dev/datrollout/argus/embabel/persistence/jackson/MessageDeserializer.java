@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import dev.datrollout.argus.embabel.persistence.EnhancedAssistantMessage;
-
 import java.io.IOException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -60,15 +59,19 @@ public class MessageDeserializer extends StdDeserializer<Message> {
         if (parts.isEmpty() && node.has("content")) {
             parts.add(new TextPart(node.get("content").asText()));
         }
-        String name = node.has("name") && !node.get("name").isNull() ? node.get("name").asText() : null;
+        String name = node.has("name") && !node.get("name").isNull()
+                ? node.get("name").asText()
+                : null;
         Instant timestamp = readInstant(node, "timestamp");
         return new UserMessage(parts, name, timestamp);
     }
 
-    private EnhancedAssistantMessage deserializeEnhancedAssistantMessage(JsonNode node, ObjectMapper mapper,
-            JsonParser p) throws IOException {
+    private EnhancedAssistantMessage deserializeEnhancedAssistantMessage(
+            JsonNode node, ObjectMapper mapper, JsonParser p) throws IOException {
         String content = node.has("content") ? node.get("content").asText("") : "";
-        String name = node.has("name") && !node.get("name").isNull() ? node.get("name").asText() : null;
+        String name = node.has("name") && !node.get("name").isNull()
+                ? node.get("name").asText()
+                : null;
         Instant timestamp = readInstant(node, "timestamp");
 
         EnhancedAssistantMessage message = new EnhancedAssistantMessage(content, name, timestamp);
@@ -86,18 +89,25 @@ public class MessageDeserializer extends StdDeserializer<Message> {
         if (node.has("reactionUpdatedAt") && !node.get("reactionUpdatedAt").isNull()) {
             message.setReactionUpdatedAt(readInstant(node, "reactionUpdatedAt"));
         }
-        if (node.has("parentDiscordMessageId") && !node.get("parentDiscordMessageId").isNull()) {
+        if (node.has("parentDiscordMessageId")
+                && !node.get("parentDiscordMessageId").isNull()) {
             String parentId = node.get("parentDiscordMessageId").asText();
             if (!parentId.isBlank()) {
                 message.setParentDiscordMessageId(parentId);
             }
         }
-        message.setPromptTokens(node.has("promptTokens") && !node.get("promptTokens").isNull()
-                ? node.get("promptTokens").intValue() : null);
-        message.setCompletionTokens(node.has("completionTokens") && !node.get("completionTokens").isNull()
-                ? node.get("completionTokens").intValue() : null);
-        message.setTotalTokensSpent(node.has("totalTokensSpent") && !node.get("totalTokensSpent").isNull()
-                ? node.get("totalTokensSpent").intValue() : null);
+        message.setPromptTokens(
+                node.has("promptTokens") && !node.get("promptTokens").isNull()
+                        ? node.get("promptTokens").intValue()
+                        : null);
+        message.setCompletionTokens(
+                node.has("completionTokens") && !node.get("completionTokens").isNull()
+                        ? node.get("completionTokens").intValue()
+                        : null);
+        message.setTotalTokensSpent(
+                node.has("totalTokensSpent") && !node.get("totalTokensSpent").isNull()
+                        ? node.get("totalTokensSpent").intValue()
+                        : null);
         return message;
     }
 

@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-
 import java.time.Instant;
 
 /**
@@ -35,8 +34,7 @@ public class MessageJacksonModule extends SimpleModule {
         context.registerSubtypes(
                 com.embabel.chat.UserMessage.class,
                 com.embabel.chat.SystemMessage.class,
-                dev.datrollout.argus.embabel.persistence.EnhancedAssistantMessage.class
-        );
+                dev.datrollout.argus.embabel.persistence.EnhancedAssistantMessage.class);
         context.setMixInAnnotations(com.embabel.chat.AssistantMessage.class, AssistantMessageMixin.class);
         context.setMixInAnnotations(com.embabel.chat.UserMessage.class, UserMessageMixin.class);
         context.setMixInAnnotations(com.embabel.chat.SystemMessage.class, SystemMessageMixin.class);
@@ -55,15 +53,11 @@ public class MessageJacksonModule extends SimpleModule {
         UserMessageMixin(
                 @JsonProperty("parts") java.util.List<com.embabel.chat.ContentPart> parts,
                 @JsonProperty("name") String name,
-                @JsonProperty("timestamp") Instant timestamp) {
-        }
+                @JsonProperty("timestamp") Instant timestamp) {}
     }
 
     abstract static class SystemMessageMixin {
         @JsonCreator
-        SystemMessageMixin(
-                @JsonProperty("content") String content,
-                @JsonProperty("timestamp") Instant timestamp) {
-        }
+        SystemMessageMixin(@JsonProperty("content") String content, @JsonProperty("timestamp") Instant timestamp) {}
     }
 }

@@ -18,8 +18,7 @@ public class LokiClientFactory implements ClientFactory {
 
     @Override
     public boolean supports(DetectionResult result) {
-        return result.hasCapability(Capability.LOGQL_QUERY)
-                || result.hasCapability(Capability.LOG_STREAMING);
+        return result.hasCapability(Capability.LOGQL_QUERY) || result.hasCapability(Capability.LOG_STREAMING);
     }
 
     @Override

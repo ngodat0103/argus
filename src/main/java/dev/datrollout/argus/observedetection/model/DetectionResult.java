@@ -1,12 +1,11 @@
 package dev.datrollout.argus.observedetection.model;
 
-import lombok.Getter;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import lombok.Getter;
 
 @Getter
 public class DetectionResult {
@@ -44,7 +43,9 @@ public class DetectionResult {
                 .build();
     }
 
-    public static Builder builder() { return new Builder(); }
+    public static Builder builder() {
+        return new Builder();
+    }
 
     public static final class Builder {
         private String providerType;
@@ -53,18 +54,30 @@ public class DetectionResult {
         private final List<String> evidence = new ArrayList<>();
         private URI endpoint;
 
-        public Builder providerType(String providerType) { this.providerType = providerType; return this; }
+        public Builder providerType(String providerType) {
+            this.providerType = providerType;
+            return this;
+        }
 
-        public Builder addCapability(Capability capability) { this.capabilities.add(capability); return this; }
+        public Builder addCapability(Capability capability) {
+            this.capabilities.add(capability);
+            return this;
+        }
 
         public Builder capabilities(Set<Capability> caps) {
             this.capabilities = caps.isEmpty() ? EnumSet.noneOf(Capability.class) : EnumSet.copyOf(caps);
             return this;
         }
 
-        public Builder confidenceScore(double score) { this.confidenceScore = score; return this; }
+        public Builder confidenceScore(double score) {
+            this.confidenceScore = score;
+            return this;
+        }
 
-        public Builder addEvidence(String e) { this.evidence.add(e); return this; }
+        public Builder addEvidence(String e) {
+            this.evidence.add(e);
+            return this;
+        }
 
         public Builder evidence(List<String> evidence) {
             this.evidence.clear();
@@ -72,8 +85,13 @@ public class DetectionResult {
             return this;
         }
 
-        public Builder endpoint(URI endpoint) { this.endpoint = endpoint; return this; }
+        public Builder endpoint(URI endpoint) {
+            this.endpoint = endpoint;
+            return this;
+        }
 
-        public DetectionResult build() { return new DetectionResult(this); }
+        public DetectionResult build() {
+            return new DetectionResult(this);
+        }
     }
 }

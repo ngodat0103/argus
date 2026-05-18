@@ -2,11 +2,10 @@ package dev.datrollout.argus.kubernetes.embabel;
 
 import com.embabel.agent.api.tool.Tool;
 import com.embabel.agent.api.tool.progressive.UnfoldingTool;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -20,16 +19,14 @@ public class NetworkingDebuggingUnfoldingTool implements UnfoldingTool {
 
     @Override
     public @NotNull Result call(@NotNull String input) {
-        return Result.text(
-                "Networking diagnostic tools are now available.\n" +
-                "DISCOVERY FIRST — when you don't know exact names, call findServices / findPods / " +
-                "listServices / listNamespaces before any inspect* tool. Do NOT guess names.\n" +
-                "Use the inspect* tools to investigate unreachable Services, empty or NotReady " +
-                "Endpoints, Ingress routing and TLS errors, NetworkPolicy isolation, pod-level " +
-                "networking issues (missing IP, probe failures, hostNetwork side effects), " +
-                "CoreDNS / 'no such host' problems, and cluster-wide CNI / kube-proxy / " +
-                "LoadBalancer state."
-        );
+        return Result.text("Networking diagnostic tools are now available.\n"
+                + "DISCOVERY FIRST — when you don't know exact names, call findServices / findPods / "
+                + "listServices / listNamespaces before any inspect* tool. Do NOT guess names.\n"
+                + "Use the inspect* tools to investigate unreachable Services, empty or NotReady "
+                + "Endpoints, Ingress routing and TLS errors, NetworkPolicy isolation, pod-level "
+                + "networking issues (missing IP, probe failures, hostNetwork side effects), "
+                + "CoreDNS / 'no such host' problems, and cluster-wide CNI / kube-proxy / "
+                + "LoadBalancer state.");
     }
 
     @Override

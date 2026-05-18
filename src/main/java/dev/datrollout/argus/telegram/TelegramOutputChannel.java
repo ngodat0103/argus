@@ -26,7 +26,7 @@ public class TelegramOutputChannel implements OutputChannel {
     @Override
     public void send(@NonNull OutputChannelEvent outputChannelEvent) {
 
-        if(outputChannelEvent instanceof ProgressOutputChannelEvent progressOutputChannelEvent) {
+        if (outputChannelEvent instanceof ProgressOutputChannelEvent progressOutputChannelEvent) {
             String progressMessage = progressOutputChannelEvent.getMessage();
             log.info("Sending progress message: {}", progressMessage);
             try {
@@ -44,9 +44,8 @@ public class TelegramOutputChannel implements OutputChannel {
             } catch (TelegramApiException e) {
                 log.warn("Failed to send/update progress message", e);
             }
-        }
-        else if(outputChannelEvent instanceof MessageOutputChannelEvent messageOutputChannelEvent){
-            if(messageOutputChannelEvent.getMessage() instanceof AssistantMessage assistantMessage) {
+        } else if (outputChannelEvent instanceof MessageOutputChannelEvent messageOutputChannelEvent) {
+            if (messageOutputChannelEvent.getMessage() instanceof AssistantMessage assistantMessage) {
                 String text = assistantMessage.getTextContent();
                 log.info("Sending message to Telegram chat {}", userMessage.getChatId());
                 try {
@@ -71,9 +70,8 @@ public class TelegramOutputChannel implements OutputChannel {
     }
 
     private void sendFormatted(String text) throws TelegramApiException {
-        SendMessage formatted = new SendMessage(
-                userMessage.getChatId().toString(),
-                TelegramMarkdownV2Formatter.format(text));
+        SendMessage formatted =
+                new SendMessage(userMessage.getChatId().toString(), TelegramMarkdownV2Formatter.format(text));
         formatted.setParseMode(ParseMode.MARKDOWNV2);
         try {
             telegramClient.execute(formatted);
@@ -90,5 +88,4 @@ public class TelegramOutputChannel implements OutputChannel {
         String message = e.getMessage();
         return message != null && message.toLowerCase().contains("can't parse");
     }
-
 }

@@ -18,8 +18,7 @@ public class PrometheusClientFactory implements ClientFactory {
 
     @Override
     public boolean supports(DetectionResult result) {
-        return result.hasCapability(Capability.PROMQL_QUERY)
-                || result.hasCapability(Capability.RANGE_QUERY);
+        return result.hasCapability(Capability.PROMQL_QUERY) || result.hasCapability(Capability.RANGE_QUERY);
     }
 
     @Override

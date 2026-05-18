@@ -1,13 +1,12 @@
 package dev.datrollout.argus.observedetection.client.impl;
 
 import dev.datrollout.argus.observedetection.client.LokiClient;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.web.client.RestClient;
-
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.web.client.RestClient;
 
 public class RestClientLokiClient implements LokiClient {
 
@@ -23,14 +22,19 @@ public class RestClientLokiClient implements LokiClient {
     }
 
     @Override
-    public URI getEndpoint() { return endpoint; }
+    public URI getEndpoint() {
+        return endpoint;
+    }
 
     @Override
-    public String clientType() { return "LOKI"; }
+    public String clientType() {
+        return "LOKI";
+    }
 
     @Override
     public Map<String, Object> queryRange(String logql, Instant start, Instant end) {
-        return restClient.get()
+        return restClient
+                .get()
                 .uri(uriBuilder -> uriBuilder
                         .scheme(endpoint.getScheme())
                         .host(endpoint.getHost())
@@ -47,7 +51,8 @@ public class RestClientLokiClient implements LokiClient {
     @Override
     @SuppressWarnings("unchecked")
     public List<String> labels() {
-        Map<String, Object> body = restClient.get()
+        Map<String, Object> body = restClient
+                .get()
                 .uri(endpoint + "/loki/api/v1/labels")
                 .retrieve()
                 .body(MAP_TYPE);
@@ -59,7 +64,8 @@ public class RestClientLokiClient implements LokiClient {
 
     @Override
     public Map<String, Object> streams(String logql, Instant start, Instant end, int limit) {
-        return restClient.get()
+        return restClient
+                .get()
                 .uri(uriBuilder -> uriBuilder
                         .scheme(endpoint.getScheme())
                         .host(endpoint.getHost())

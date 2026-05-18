@@ -6,14 +6,13 @@ import dev.datrollout.argus.observedetection.model.ConfidenceLevel;
 import dev.datrollout.argus.observedetection.model.DetectionResult;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Component;
-
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -23,8 +22,7 @@ public class InMemoryCapabilityRegistry implements CapabilityRegistry {
     private final ApplicationEventPublisher eventPublisher;
     private final Counter detectedCounter;
 
-    public InMemoryCapabilityRegistry(ApplicationEventPublisher eventPublisher,
-                                      MeterRegistry meterRegistry) {
+    public InMemoryCapabilityRegistry(ApplicationEventPublisher eventPublisher, MeterRegistry meterRegistry) {
         this.eventPublisher = eventPublisher;
         this.detectedCounter = Counter.builder("argus.capabilities.detected")
                 .description("Total capability detection registrations")
@@ -34,24 +32,33 @@ public class InMemoryCapabilityRegistry implements CapabilityRegistry {
     @Override
     public void register(DetectionResult result) {
         if (result.getConfidenceLevel() == ConfidenceLevel.IGNORE) {
-            log.debug("Ignoring result below threshold endpoint={} score={}",
-                    result.getEndpoint(), result.getConfidenceScore());
+            log.debug(
+                    "Ignoring result below threshold endpoint={} score={}",
+                    result.getEndpoint(),
+                    result.getConfidenceScore());
             return;
         }
 
         String key = registryKey(result);
         DetectionResult existing = store.get(key);
         if (existing != null && !shouldReplace(existing, result)) {
-            log.debug("Skipping duplicate provider={} existing={} candidate={}",
-                    result.getProviderType(), existing.getEndpoint(), result.getEndpoint());
+            log.debug(
+                    "Skipping duplicate provider={} existing={} candidate={}",
+                    result.getProviderType(),
+                    existing.getEndpoint(),
+                    result.getEndpoint());
             return;
         }
 
         store.put(key, result);
         detectedCounter.increment();
-        log.info("Registered capabilities endpoint={} provider={} confidence={} score={} caps={}",
-                result.getEndpoint(), result.getProviderType(),
-                result.getConfidenceLevel(), result.getConfidenceScore(), result.getCapabilities());
+        log.info(
+                "Registered capabilities endpoint={} provider={} confidence={} score={} caps={}",
+                result.getEndpoint(),
+                result.getProviderType(),
+                result.getConfidenceLevel(),
+                result.getConfidenceScore(),
+                result.getCapabilities());
         eventPublisher.publishEvent(new CapabilityDetectedEvent(this, result));
     }
 

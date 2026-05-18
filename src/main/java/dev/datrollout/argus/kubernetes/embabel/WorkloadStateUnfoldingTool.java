@@ -2,11 +2,10 @@ package dev.datrollout.argus.kubernetes.embabel;
 
 import com.embabel.agent.api.tool.Tool;
 import com.embabel.agent.api.tool.progressive.UnfoldingTool;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -20,15 +19,13 @@ public class WorkloadStateUnfoldingTool implements UnfoldingTool {
 
     @Override
     public @NotNull Result call(@NotNull String input) {
-        return Result.text(
-                "Workload rollout / state tools are now available.\n" +
-                "Use inspectDeploymentRollout for stuck or paused Deployments, getRolloutHistory to see " +
-                "the ReplicaSet revision trail (and how to rollback), inspectStatefulSetState for ordinal-by-" +
-                "ordinal rollout progress and partition canaries, and inspectDaemonSetState for missing or " +
-                "misscheduled per-node pods. These complement (don't replace) inspectPodResourceHealth — " +
-                "rollout state is about whether the controller is making progress, pod health is about " +
-                "whether the pods themselves are happy."
-        );
+        return Result.text("Workload rollout / state tools are now available.\n"
+                + "Use inspectDeploymentRollout for stuck or paused Deployments, getRolloutHistory to see "
+                + "the ReplicaSet revision trail (and how to rollback), inspectStatefulSetState for ordinal-by-"
+                + "ordinal rollout progress and partition canaries, and inspectDaemonSetState for missing or "
+                + "misscheduled per-node pods. These complement (don't replace) inspectPodResourceHealth — "
+                + "rollout state is about whether the controller is making progress, pod health is about "
+                + "whether the pods themselves are happy.");
     }
 
     @Override

@@ -4,6 +4,12 @@ import com.embabel.agent.api.reference.LlmReference;
 import com.embabel.chat.*;
 import com.embabel.common.ai.prompt.PromptContributor;
 import jakarta.persistence.*;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -12,21 +18,13 @@ import org.hibernate.type.SqlTypes;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-
 @Entity
 @Table(
         name = "conversation",
         indexes = {
-                @Index(name = "conversation_chat_platform_id_idx", columnList = "chat_platform_id"),
-                @Index(name = "conversation_created_at_idx", columnList = "created_at"),
-        }
-)
+            @Index(name = "conversation_chat_platform_id_idx", columnList = "chat_platform_id"),
+            @Index(name = "conversation_created_at_idx", columnList = "created_at"),
+        })
 public class PostgresqlConversation implements Conversation {
 
     @Id
@@ -62,9 +60,8 @@ public class PostgresqlConversation implements Conversation {
         // JPA no-arg constructor
     }
 
-    public PostgresqlConversation(ConversationJpaRepository conversationJpaRepository,
-            String chatPlatformId,
-            String conversationId) {
+    public PostgresqlConversation(
+            ConversationJpaRepository conversationJpaRepository, String chatPlatformId, String conversationId) {
         this.conversationJpaRepository = conversationJpaRepository;
         this.chatPlatformId = chatPlatformId;
         this.conversationId = conversationId;
@@ -117,10 +114,7 @@ public class PostgresqlConversation implements Conversation {
 
     @Override
     public @NonNull List<LlmReference> references() {
-        return mostRecentlyAdded(5).getAssets()
-                .stream()
-                .map(Asset::reference)
-                .toList();
+        return mostRecentlyAdded(5).getAssets().stream().map(Asset::reference).toList();
     }
 
     @Override

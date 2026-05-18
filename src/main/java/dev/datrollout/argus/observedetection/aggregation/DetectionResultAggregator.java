@@ -2,13 +2,12 @@ package dev.datrollout.argus.observedetection.aggregation;
 
 import dev.datrollout.argus.observedetection.model.Capability;
 import dev.datrollout.argus.observedetection.model.DetectionResult;
-import org.springframework.stereotype.Component;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 @Component
 public class DetectionResultAggregator {
@@ -19,7 +18,8 @@ public class DetectionResultAggregator {
     public List<DetectionResult> aggregateByProvider(List<DetectionResult> results) {
         return results.stream()
                 .collect(java.util.stream.Collectors.groupingBy(DetectionResult::getProviderType))
-                .values().stream()
+                .values()
+                .stream()
                 .map(this::aggregate)
                 .toList();
     }
@@ -34,7 +34,9 @@ public class DetectionResultAggregator {
 
         URI endpoint = results.getFirst().getEndpoint();
         String providerType = results.getFirst().getProviderType();
-        double totalScore = results.stream().mapToDouble(DetectionResult::getConfidenceScore).sum();
+        double totalScore = results.stream()
+                .mapToDouble(DetectionResult::getConfidenceScore)
+                .sum();
 
         Set<Capability> allCapabilities = EnumSet.noneOf(Capability.class);
         List<String> allEvidence = new ArrayList<>();

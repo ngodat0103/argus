@@ -7,16 +7,15 @@ import dev.datrollout.argus.observedetection.model.ProbeTarget;
 import dev.datrollout.argus.observedetection.probe.CapabilityProbe;
 import dev.datrollout.argus.observedetection.probe.ProbeHeuristics;
 import dev.datrollout.argus.observedetection.scoring.ScoreAggregator;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 @Component
@@ -34,7 +33,9 @@ public class LokiProbe implements CapabilityProbe {
     }
 
     @Override
-    public String name() { return "LokiProbe"; }
+    public String name() {
+        return "LokiProbe";
+    }
 
     @Override
     public boolean supports(ProbeTarget target) {
@@ -52,28 +53,33 @@ public class LokiProbe implements CapabilityProbe {
         probeReadiness(aggregator, target.getBaseUrl());
 
         DetectionResult result = aggregator.build();
-        log.info("LokiProbe target={} score={} confidence={}",
-                target.getBaseUrl(), result.getConfidenceScore(), result.getConfidenceLevel());
+        log.info(
+                "LokiProbe target={} score={} confidence={}",
+                target.getBaseUrl(),
+                result.getConfidenceScore(),
+                result.getConfidenceLevel());
         return result;
     }
 
     private void applyWeakSignals(ScoreAggregator aggregator, ProbeTarget target) {
         Map<String, String> labels = target.getLabels() != null ? target.getLabels() : Map.of();
-        boolean match = labels.containsKey("loki") || labels.containsValue("loki")
-                || labels.containsKey("logging") || labels.containsValue("logging");
+        boolean match = labels.containsKey("loki")
+                || labels.containsValue("loki")
+                || labels.containsKey("logging")
+                || labels.containsValue("logging");
         if (match) aggregator.addSignal(5, "Label contains loki/logging keyword");
     }
 
     private void applyMediumSignals(ScoreAggregator aggregator, ProbeTarget target) {
         List<String> images = target.getContainerImages() != null ? target.getContainerImages() : List.of();
-        boolean match = images.stream()
-                .anyMatch(img -> LOKI_IMAGES.stream().anyMatch(img.toLowerCase()::contains));
+        boolean match = images.stream().anyMatch(img -> LOKI_IMAGES.stream().anyMatch(img.toLowerCase()::contains));
         if (match) aggregator.addSignal(20, "Container image matches Loki-compatible image");
     }
 
     private void probeLabels(ScoreAggregator aggregator, URI base) {
         try {
-            Map<String, Object> body = restClient.get()
+            Map<String, Object> body = restClient
+                    .get()
                     .uri(base + "/loki/api/v1/labels")
                     .retrieve()
                     .body(MAP_TYPE);
@@ -89,7 +95,8 @@ public class LokiProbe implements CapabilityProbe {
 
     private void probeQueryRange(ScoreAggregator aggregator, URI base) {
         try {
-            Map<String, Object> body = restClient.get()
+            Map<String, Object> body = restClient
+                    .get()
                     .uri(base + "/loki/api/v1/query_range")
                     .retrieve()
                     .body(MAP_TYPE);
@@ -105,10 +112,7 @@ public class LokiProbe implements CapabilityProbe {
 
     private void probeReadiness(ScoreAggregator aggregator, URI base) {
         try {
-            String body = restClient.get()
-                    .uri(base + "/ready")
-                    .retrieve()
-                    .body(String.class);
+            String body = restClient.get().uri(base + "/ready").retrieve().body(String.class);
             if (body != null && body.toLowerCase().contains("ready")) {
                 aggregator.addSignal(15, "Loki /ready endpoint responded");
                 aggregator.addCapability(Capability.METRICS_ENDPOINT);

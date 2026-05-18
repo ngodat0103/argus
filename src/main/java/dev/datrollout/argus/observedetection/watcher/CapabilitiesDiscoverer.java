@@ -10,16 +10,15 @@ import dev.datrollout.argus.observedetection.registry.CapabilityRegistry;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
-
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -32,11 +31,12 @@ public class CapabilitiesDiscoverer {
     private final List<String> watchedNamespaces;
     private final CapabilityRegistry capabilityRegistry;
 
-    public CapabilitiesDiscoverer(KubernetesClient kubernetesClient,
-                                  ProbeOrchestrator probeOrchestrator,
-                                  ProbeTargetExtractor extractor,
-                                  CapabilityRegistry capabilityRegistry,
-                                  DiscoveryProperties properties) {
+    public CapabilitiesDiscoverer(
+            KubernetesClient kubernetesClient,
+            ProbeOrchestrator probeOrchestrator,
+            ProbeTargetExtractor extractor,
+            CapabilityRegistry capabilityRegistry,
+            DiscoveryProperties properties) {
         this.kubernetesClient = kubernetesClient;
         this.probeOrchestrator = probeOrchestrator;
         this.capabilityRegistry = capabilityRegistry;
@@ -52,13 +52,15 @@ public class CapabilitiesDiscoverer {
         int targetsProbed = 0;
 
         if (watchedNamespaces.isEmpty()) {
-            for (Service service : kubernetesClient.services().inAnyNamespace().list().getItems()) {
+            for (Service service :
+                    kubernetesClient.services().inAnyNamespace().list().getItems()) {
                 servicesScanned++;
                 targetsProbed += dispatchService(service, dispatchedServices, dispatchedProviders);
             }
         } else {
             for (String ns : watchedNamespaces) {
-                for (Service service : kubernetesClient.services().inNamespace(ns).list().getItems()) {
+                for (Service service :
+                        kubernetesClient.services().inNamespace(ns).list().getItems()) {
                     servicesScanned++;
                     targetsProbed += dispatchService(service, dispatchedServices, dispatchedProviders);
                 }
@@ -69,15 +71,18 @@ public class CapabilitiesDiscoverer {
                 .sorted(Comparator.comparing(DetectionResult::getProviderType))
                 .toList();
 
-        log.info("Capability discovery scan complete: namespaces={}, servicesScanned={}, targetsProbed={}",
+        log.info(
+                "Capability discovery scan complete: namespaces={}, servicesScanned={}, targetsProbed={}",
                 watchedNamespaces.isEmpty() ? "ALL" : watchedNamespaces,
-                servicesScanned, targetsProbed);
+                servicesScanned,
+                targetsProbed);
         logDiscoverySummary(detectionResults);
     }
 
     private void logDiscoverySummary(List<DetectionResult> results) {
         if (results.isEmpty()) {
-            log.warn("No observability providers detected in cluster (namespaces={})",
+            log.warn(
+                    "No observability providers detected in cluster (namespaces={})",
                     watchedNamespaces.isEmpty() ? "ALL" : watchedNamespaces);
             return;
         }
@@ -86,7 +91,8 @@ public class CapabilitiesDiscoverer {
         log.info("Cluster observability providers ({}):", results.size());
         for (DetectionResult result : results) {
             clusterCapabilities.addAll(result.getCapabilities());
-            log.info("  - provider={} endpoint={} confidence={} score={} capabilities={}",
+            log.info(
+                    "  - provider={} endpoint={} confidence={} score={} capabilities={}",
                     result.getProviderType(),
                     result.getEndpoint(),
                     result.getConfidenceLevel(),
@@ -94,8 +100,10 @@ public class CapabilitiesDiscoverer {
                     formatCapabilities(result.getCapabilities()));
         }
 
-        log.info("Cluster-supported capabilities ({}): {}",
-                clusterCapabilities.size(), formatCapabilities(clusterCapabilities));
+        log.info(
+                "Cluster-supported capabilities ({}): {}",
+                clusterCapabilities.size(),
+                formatCapabilities(clusterCapabilities));
     }
 
     private static String formatCapabilities(Set<Capability> capabilities) {
@@ -110,12 +118,15 @@ public class CapabilitiesDiscoverer {
 
     private int dispatchService(Service service, Set<String> dispatchedServices, Set<String> dispatchedProviders) {
         if (isHeadlessService(service)) {
-            log.debug("Skipping headless service {}/{}", service.getMetadata().getNamespace(),
+            log.debug(
+                    "Skipping headless service {}/{}",
+                    service.getMetadata().getNamespace(),
                     service.getMetadata().getName());
             return 0;
         }
 
-        return extractor.fromService(service)
+        return extractor
+                .fromService(service)
                 .filter(ProbeHeuristics::isObservabilityTarget)
                 .filter(target -> shouldDispatch(target, dispatchedServices, dispatchedProviders))
                 .map(target -> {
@@ -126,9 +137,8 @@ public class CapabilitiesDiscoverer {
                 .orElse(0);
     }
 
-    private boolean shouldDispatch(ProbeTarget target,
-                                   Set<String> dispatchedServices,
-                                   Set<String> dispatchedProviders) {
+    private boolean shouldDispatch(
+            ProbeTarget target, Set<String> dispatchedServices, Set<String> dispatchedProviders) {
         var providerKey = ProbeHeuristics.providerKey(target);
         if (providerKey.isPresent() && !dispatchedProviders.add(providerKey.get())) {
             log.debug("Skipping duplicate provider {} for target={}", providerKey.get(), target.key());

@@ -7,23 +7,21 @@ import dev.datrollout.argus.observedetection.model.ProbeTarget;
 import dev.datrollout.argus.observedetection.probe.CapabilityProbe;
 import dev.datrollout.argus.observedetection.probe.ProbeHeuristics;
 import dev.datrollout.argus.observedetection.scoring.ScoreAggregator;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 @Slf4j
 @Component
 public class PrometheusProbe implements CapabilityProbe {
 
-    private static final Set<String> PROMETHEUS_IMAGES =
-            Set.of("prometheus", "mimir", "thanos", "victoriametrics");
+    private static final Set<String> PROMETHEUS_IMAGES = Set.of("prometheus", "mimir", "thanos", "victoriametrics");
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
@@ -35,7 +33,9 @@ public class PrometheusProbe implements CapabilityProbe {
     }
 
     @Override
-    public String name() { return "PrometheusProbe"; }
+    public String name() {
+        return "PrometheusProbe";
+    }
 
     @Override
     public boolean supports(ProbeTarget target) {
@@ -53,28 +53,34 @@ public class PrometheusProbe implements CapabilityProbe {
         probeRangeQuery(aggregator, target.getBaseUrl());
 
         DetectionResult result = aggregator.build();
-        log.info("PrometheusProbe target={} score={} confidence={}",
-                target.getBaseUrl(), result.getConfidenceScore(), result.getConfidenceLevel());
+        log.info(
+                "PrometheusProbe target={} score={} confidence={}",
+                target.getBaseUrl(),
+                result.getConfidenceScore(),
+                result.getConfidenceLevel());
         return result;
     }
 
     private void applyWeakSignals(ScoreAggregator aggregator, ProbeTarget target) {
         Map<String, String> labels = target.getLabels() != null ? target.getLabels() : Map.of();
-        boolean hasLabel = labels.containsKey("monitoring") || labels.containsValue("monitoring")
-                || labels.containsKey("prometheus") || labels.containsValue("prometheus");
+        boolean hasLabel = labels.containsKey("monitoring")
+                || labels.containsValue("monitoring")
+                || labels.containsKey("prometheus")
+                || labels.containsValue("prometheus");
         if (hasLabel) aggregator.addSignal(5, "Label contains monitoring/prometheus keyword");
     }
 
     private void applyMediumSignals(ScoreAggregator aggregator, ProbeTarget target) {
         List<String> images = target.getContainerImages() != null ? target.getContainerImages() : List.of();
-        boolean match = images.stream()
-                .anyMatch(img -> PROMETHEUS_IMAGES.stream().anyMatch(img.toLowerCase()::contains));
+        boolean match =
+                images.stream().anyMatch(img -> PROMETHEUS_IMAGES.stream().anyMatch(img.toLowerCase()::contains));
         if (match) aggregator.addSignal(20, "Container image matches Prometheus-compatible image");
     }
 
     private void probeBuildInfo(ScoreAggregator aggregator, URI base) {
         try {
-            Map<String, Object> body = restClient.get()
+            Map<String, Object> body = restClient
+                    .get()
                     .uri(base + "/api/v1/status/buildinfo")
                     .retrieve()
                     .body(MAP_TYPE);
@@ -89,7 +95,8 @@ public class PrometheusProbe implements CapabilityProbe {
 
     private void probeInstantQuery(ScoreAggregator aggregator, URI base) {
         try {
-            Map<String, Object> body = restClient.get()
+            Map<String, Object> body = restClient
+                    .get()
                     .uri(base + "/api/v1/query?query=up")
                     .retrieve()
                     .body(MAP_TYPE);
@@ -105,7 +112,8 @@ public class PrometheusProbe implements CapabilityProbe {
 
     private void probeRangeQuery(ScoreAggregator aggregator, URI base) {
         try {
-            Map<String, Object> body = restClient.get()
+            Map<String, Object> body = restClient
+                    .get()
                     .uri(base + "/api/v1/query_range")
                     .retrieve()
                     .body(MAP_TYPE);
@@ -121,5 +129,4 @@ public class PrometheusProbe implements CapabilityProbe {
     private boolean isSuccess(Map<String, Object> body) {
         return body != null && "success".equals(body.get("status"));
     }
-
 }

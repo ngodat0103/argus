@@ -2,11 +2,10 @@ package dev.datrollout.argus.kubernetes.embabel;
 
 import com.embabel.agent.api.tool.Tool;
 import com.embabel.agent.api.tool.progressive.UnfoldingTool;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -17,13 +16,12 @@ public class KubernetesResourceUnfoldingTool implements UnfoldingTool {
     public @NotNull List<Tool> getInnerTools() {
         return Tool.fromInstance(metricsResourceTool);
     }
+
     @Override
     public @NotNull Result call(@NotNull String input) {
-        return Result.text(
-                "CPU and memory diagnostic tools are now available. " +
-                "Use them to investigate OOMKilled pods, CrashLoopBackOff, CPU/memory requests and limits, " +
-                "node memory/disk pressure, namespace CPU/memory quota exhaustion, and live consumption metrics."
-        );
+        return Result.text("CPU and memory diagnostic tools are now available. "
+                + "Use them to investigate OOMKilled pods, CrashLoopBackOff, CPU/memory requests and limits, "
+                + "node memory/disk pressure, namespace CPU/memory quota exhaustion, and live consumption metrics.");
     }
 
     @Override

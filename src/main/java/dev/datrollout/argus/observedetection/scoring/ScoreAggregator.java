@@ -3,7 +3,6 @@ package dev.datrollout.argus.observedetection.scoring;
 import dev.datrollout.argus.observedetection.model.Capability;
 import dev.datrollout.argus.observedetection.model.ConfidenceLevel;
 import dev.datrollout.argus.observedetection.model.DetectionResult;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -34,7 +33,9 @@ public class ScoreAggregator {
         return this;
     }
 
-    public double getScore() { return totalScore; }
+    public double getScore() {
+        return totalScore;
+    }
 
     public ConfidenceLevel getConfidenceLevel() {
         return ConfidenceLevel.fromScore(totalScore);

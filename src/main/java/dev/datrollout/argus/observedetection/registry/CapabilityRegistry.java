@@ -2,7 +2,6 @@ package dev.datrollout.argus.observedetection.registry;
 
 import dev.datrollout.argus.observedetection.model.Capability;
 import dev.datrollout.argus.observedetection.model.DetectionResult;
-
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;

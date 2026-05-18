@@ -1,10 +1,9 @@
 package dev.datrollout.argus.embabel.persistence;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ConversationJpaRepository extends JpaRepository<PostgresqlConversation, Long> {
 

@@ -14,10 +14,6 @@ import io.fabric8.kubernetes.client.LocalPortForward;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
-
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,6 +21,9 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -42,14 +41,15 @@ public class ProbeOrchestrator {
     private final Counter probesFailedCounter;
     private final Timer probeLatencyTimer;
 
-    public ProbeOrchestrator(ProbeFactory probeFactory,
-                             DetectionResultAggregator aggregator,
-                             CapabilityRegistry capabilityRegistry,
-                             ProbeResultCache cache,
-                             @Qualifier("probeExecutor") ExecutorService probeExecutor,
-                             PortForwardManager portForwardManager,
-                             DiscoveryProperties properties,
-                             MeterRegistry meterRegistry) {
+    public ProbeOrchestrator(
+            ProbeFactory probeFactory,
+            DetectionResultAggregator aggregator,
+            CapabilityRegistry capabilityRegistry,
+            ProbeResultCache cache,
+            @Qualifier("probeExecutor") ExecutorService probeExecutor,
+            PortForwardManager portForwardManager,
+            DiscoveryProperties properties,
+            MeterRegistry meterRegistry) {
         this.probeFactory = probeFactory;
         this.aggregator = aggregator;
         this.capabilityRegistry = capabilityRegistry;
@@ -118,8 +118,11 @@ public class ProbeOrchestrator {
         for (DetectionResult result : aggregator.aggregateByProvider(results)) {
             DetectionResult forRegistry = result.withEndpoint(registerEndpoint);
             if (forRegistry.getConfidenceLevel() == ConfidenceLevel.IGNORE) {
-                log.debug("Probe result below threshold for target={} provider={} score={}",
-                        probeTarget.key(), forRegistry.getProviderType(), forRegistry.getConfidenceScore());
+                log.debug(
+                        "Probe result below threshold for target={} provider={} score={}",
+                        probeTarget.key(),
+                        forRegistry.getProviderType(),
+                        forRegistry.getConfidenceScore());
                 continue;
             }
             capabilityRegistry.register(forRegistry);

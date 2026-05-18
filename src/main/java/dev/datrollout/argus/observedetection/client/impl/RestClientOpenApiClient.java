@@ -1,13 +1,12 @@
 package dev.datrollout.argus.observedetection.client.impl;
 
 import dev.datrollout.argus.observedetection.client.OpenApiClient;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
-
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 public class RestClientOpenApiClient implements OpenApiClient {
 
@@ -25,21 +24,24 @@ public class RestClientOpenApiClient implements OpenApiClient {
     }
 
     @Override
-    public URI getEndpoint() { return endpoint; }
+    public URI getEndpoint() {
+        return endpoint;
+    }
 
     @Override
-    public String clientType() { return "OPENAPI"; }
+    public String clientType() {
+        return "OPENAPI";
+    }
 
     @Override
     public Map<String, Object> getSchema() {
         for (String path : SCHEMA_PATHS) {
             try {
-                Map<String, Object> schema = restClient.get()
-                        .uri(endpoint + path)
-                        .retrieve()
-                        .body(MAP_TYPE);
+                Map<String, Object> schema =
+                        restClient.get().uri(endpoint + path).retrieve().body(MAP_TYPE);
                 if (schema != null) return schema;
-            } catch (RestClientException ignored) {}
+            } catch (RestClientException ignored) {
+            }
         }
         return Map.of();
     }

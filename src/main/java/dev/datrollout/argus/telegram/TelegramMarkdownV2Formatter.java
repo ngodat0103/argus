@@ -34,21 +34,16 @@ final class TelegramMarkdownV2Formatter {
 
     private static final Pattern FENCED_CODE =
             Pattern.compile("```([\\w.-]*)\\r?\\n?([\\s\\S]*?)```", Pattern.MULTILINE);
-    private static final Pattern INLINE_CODE =
-            Pattern.compile("`([^`\\n]+)`");
-    private static final Pattern BOLD =
-            Pattern.compile("\\*\\*(.+?)\\*\\*|__(.+?)__", Pattern.DOTALL);
+    private static final Pattern INLINE_CODE = Pattern.compile("`([^`\\n]+)`");
+    private static final Pattern BOLD = Pattern.compile("\\*\\*(.+?)\\*\\*|__(.+?)__", Pattern.DOTALL);
     private static final Pattern ITALIC =
             // single * or _ not preceded/followed by another of the same char
-            Pattern.compile("(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)" +
-                    "|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", Pattern.DOTALL);
-    private static final Pattern HEADER =
-            Pattern.compile("(?m)^#{1,6}[ \\t]+(.+)$");
-    private static final Pattern LINK =
-            Pattern.compile("\\[([^\\]]+)]\\(([^)]+)\\)");
+            Pattern.compile(
+                    "(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)" + "|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", Pattern.DOTALL);
+    private static final Pattern HEADER = Pattern.compile("(?m)^#{1,6}[ \\t]+(.+)$");
+    private static final Pattern LINK = Pattern.compile("\\[([^\\]]+)]\\(([^)]+)\\)");
 
-    private TelegramMarkdownV2Formatter() {
-    }
+    private TelegramMarkdownV2Formatter() {}
 
     static String format(String markdown) {
         if (markdown == null || markdown.isEmpty()) {
@@ -65,9 +60,7 @@ final class TelegramMarkdownV2Formatter {
             return "```" + lang + "\n" + code + "\n```";
         });
 
-        text = extract(text, INLINE_CODE, slots, m ->
-                "`" + escapeCode(m.group(1)) + "`"
-        );
+        text = extract(text, INLINE_CODE, slots, m -> "`" + escapeCode(m.group(1)) + "`");
 
         text = extract(text, BOLD, slots, m -> {
             String content = m.group(1) != null ? m.group(1) : m.group(2);
@@ -79,13 +72,9 @@ final class TelegramMarkdownV2Formatter {
             return "_" + escapePlain(content.strip()) + "_";
         });
 
-        text = extract(text, HEADER, slots, m ->
-                "*" + escapePlain(m.group(1).strip()) + "*"
-        );
+        text = extract(text, HEADER, slots, m -> "*" + escapePlain(m.group(1).strip()) + "*");
 
-        text = extract(text, LINK, slots, m ->
-                "[" + escapePlain(m.group(1)) + "](" + escapeUrl(m.group(2)) + ")"
-        );
+        text = extract(text, LINK, slots, m -> "[" + escapePlain(m.group(1)) + "](" + escapeUrl(m.group(2)) + ")");
 
         // Escape all MarkdownV2 special chars in what remains (plain text only).
         text = escapePlain(text);
@@ -98,8 +87,8 @@ final class TelegramMarkdownV2Formatter {
         return text;
     }
 
-    private static String extract(String text, Pattern pattern, List<String> slots,
-                                   Function<Matcher, String> converter) {
+    private static String extract(
+            String text, Pattern pattern, List<String> slots, Function<Matcher, String> converter) {
         Matcher m = pattern.matcher(text);
         StringBuilder sb = new StringBuilder();
         while (m.find()) {

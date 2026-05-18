@@ -2,15 +2,14 @@ package dev.datrollout.argus.observedetection.cache;
 
 import dev.datrollout.argus.observedetection.config.DiscoveryProperties;
 import dev.datrollout.argus.observedetection.model.DetectionResult;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 @Component
 public class ProbeResultCache {

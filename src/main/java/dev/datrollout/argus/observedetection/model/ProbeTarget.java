@@ -7,7 +7,10 @@ import java.util.Map;
 public class ProbeTarget {
 
     /** Whether this target was discovered from a Kubernetes Service or a Pod. */
-    public enum SourceKind { SERVICE, POD }
+    public enum SourceKind {
+        SERVICE,
+        POD
+    }
 
     private String namespace;
     private String serviceName;
@@ -29,14 +32,37 @@ public class ProbeTarget {
         this.sourceKind = builder.sourceKind;
     }
 
-    public String getNamespace() { return namespace; }
-    public String getServiceName() { return serviceName; }
-    public URI getBaseUrl() { return baseUrl; }
-    public Map<String, String> getLabels() { return labels; }
-    public Map<String, String> getAnnotations() { return annotations; }
-    public List<Integer> getPorts() { return ports; }
-    public List<String> getContainerImages() { return containerImages; }
-    public SourceKind getSourceKind() { return sourceKind; }
+    public String getNamespace() {
+        return namespace;
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public URI getBaseUrl() {
+        return baseUrl;
+    }
+
+    public Map<String, String> getLabels() {
+        return labels;
+    }
+
+    public Map<String, String> getAnnotations() {
+        return annotations;
+    }
+
+    public List<Integer> getPorts() {
+        return ports;
+    }
+
+    public List<String> getContainerImages() {
+        return containerImages;
+    }
+
+    public SourceKind getSourceKind() {
+        return sourceKind;
+    }
 
     public String key() {
         return namespace + "/" + serviceName;
@@ -56,7 +82,9 @@ public class ProbeTarget {
                 .build();
     }
 
-    public static Builder builder() { return new Builder(); }
+    public static Builder builder() {
+        return new Builder();
+    }
 
     public static final class Builder {
         private String namespace;
@@ -68,15 +96,48 @@ public class ProbeTarget {
         private List<String> containerImages = List.of();
         private SourceKind sourceKind = SourceKind.SERVICE;
 
-        public Builder namespace(String namespace) { this.namespace = namespace; return this; }
-        public Builder serviceName(String serviceName) { this.serviceName = serviceName; return this; }
-        public Builder baseUrl(URI baseUrl) { this.baseUrl = baseUrl; return this; }
-        public Builder labels(Map<String, String> labels) { this.labels = labels; return this; }
-        public Builder annotations(Map<String, String> annotations) { this.annotations = annotations; return this; }
-        public Builder ports(List<Integer> ports) { this.ports = ports; return this; }
-        public Builder containerImages(List<String> containerImages) { this.containerImages = containerImages; return this; }
-        public Builder sourceKind(SourceKind sourceKind) { this.sourceKind = sourceKind; return this; }
+        public Builder namespace(String namespace) {
+            this.namespace = namespace;
+            return this;
+        }
 
-        public ProbeTarget build() { return new ProbeTarget(this); }
+        public Builder serviceName(String serviceName) {
+            this.serviceName = serviceName;
+            return this;
+        }
+
+        public Builder baseUrl(URI baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder labels(Map<String, String> labels) {
+            this.labels = labels;
+            return this;
+        }
+
+        public Builder annotations(Map<String, String> annotations) {
+            this.annotations = annotations;
+            return this;
+        }
+
+        public Builder ports(List<Integer> ports) {
+            this.ports = ports;
+            return this;
+        }
+
+        public Builder containerImages(List<String> containerImages) {
+            this.containerImages = containerImages;
+            return this;
+        }
+
+        public Builder sourceKind(SourceKind sourceKind) {
+            this.sourceKind = sourceKind;
+            return this;
+        }
+
+        public ProbeTarget build() {
+            return new ProbeTarget(this);
+        }
     }
 }

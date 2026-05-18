@@ -8,8 +8,8 @@ public enum ConfidenceLevel {
 
     public static ConfidenceLevel fromScore(double score) {
         if (score >= 100) return CONFIRMED;
-        if (score >= 70)  return PROBABLE;
-        if (score >= 40)  return POSSIBLE;
+        if (score >= 70) return PROBABLE;
+        if (score >= 40) return POSSIBLE;
         return IGNORE;
     }
 }

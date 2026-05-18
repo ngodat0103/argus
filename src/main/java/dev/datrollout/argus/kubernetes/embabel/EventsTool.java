@@ -6,21 +6,18 @@ import io.fabric8.kubernetes.api.model.MicroTime;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * LLM-callable tools for inspecting cluster Events.
@@ -45,9 +42,7 @@ public class EventsTool {
     // LLM tools
     // ──────────────────────────────────────────────────────────────────────────
 
-    @LlmTool(
-            name = "listRecentEvents",
-            description = """
+    @LlmTool(name = "listRecentEvents", description = """
                     Use this tool as the FIRST step when investigating any namespaced incident
                     ("what just went wrong in <namespace>"). Returns the most recent Events in a
                     namespace, sorted newest-first.
@@ -57,8 +52,7 @@ public class EventsTool {
                     involved object (kind/name), source component, and message.
                     Includes a counts-by-reason summary so the LLM can spot patterns
                     (e.g. 5x BackOff, 3x FailedScheduling).
-                    """
-    )
+                    """)
     public String listRecentEvents(String namespace, String typeFilter, int sinceMinutes) {
         if (namespace == null || namespace.isBlank()) {
             return "ERROR: namespace must not be empty. Use listClusterEvents for cluster-wide.";
@@ -68,24 +62,22 @@ public class EventsTool {
 
         List<Event> events;
         try {
-            events = kubernetesClient.v1().events().inNamespace(namespace).list().getItems();
+            events =
+                    kubernetesClient.v1().events().inNamespace(namespace).list().getItems();
         } catch (KubernetesClientException e) {
             return "ERROR: could not list events in " + namespace + ": " + e.getMessage();
         }
         return renderEvents(events, "RECENT EVENTS: " + namespace, filter, cutoff, namespace);
     }
 
-    @LlmTool(
-            name = "listClusterEvents",
-            description = """
+    @LlmTool(name = "listClusterEvents", description = """
                     Use this tool when the operator is investigating a cluster-wide problem and
                     has not narrowed it to a single namespace ("the cluster is sad", "what's
                     breaking everywhere"). Returns the most recent Events across ALL namespaces.
                     sinceMinutes: time window in minutes (0 = no time filter).
                     Always Warning-only — the cluster generates far too many Normal events to be
                     useful at this scope. Capped at 50 events.
-                    """
-    )
+                    """)
     public String listClusterEvents(int sinceMinutes) {
         Instant cutoff = computeCutoff(sinceMinutes);
         List<Event> events;
@@ -97,16 +89,13 @@ public class EventsTool {
         return renderEvents(events, "CLUSTER EVENTS (Warning only)", FILTER_WARNING, cutoff, null);
     }
 
-    @LlmTool(
-            name = "findEventsForObject",
-            description = """
+    @LlmTool(name = "findEventsForObject", description = """
                     Use this tool to fetch every Event tied to one specific Kubernetes object
                     (e.g. why is THIS pod stuck, why is THIS PVC pending). Pass the namespace
                     and the object's kind (Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet,
                     Service, Ingress, PersistentVolumeClaim, Job, CronJob, Node, etc.) and exact
                     name. Returns events sorted newest-first regardless of type.
-                    """
-    )
+                    """)
     public String findEventsForObject(String namespace, String kind, String name) {
         if (kind == null || kind.isBlank() || name == null || name.isBlank()) {
             return "ERROR: kind and name are required.";
@@ -117,15 +106,24 @@ public class EventsTool {
             all = clusterScoped
                     ? kubernetesClient.v1().events().inAnyNamespace().list().getItems()
                     : (namespace == null || namespace.isBlank()
-                            ? kubernetesClient.v1().events().inAnyNamespace().list().getItems()
-                            : kubernetesClient.v1().events().inNamespace(namespace).list().getItems());
+                            ? kubernetesClient
+                                    .v1()
+                                    .events()
+                                    .inAnyNamespace()
+                                    .list()
+                                    .getItems()
+                            : kubernetesClient
+                                    .v1()
+                                    .events()
+                                    .inNamespace(namespace)
+                                    .list()
+                                    .getItems());
         } catch (KubernetesClientException e) {
             return "ERROR: could not list events: " + e.getMessage();
         }
 
-        List<Event> filtered = all.stream()
-                .filter(e -> matchesObject(e, kind, name))
-                .toList();
+        List<Event> filtered =
+                all.stream().filter(e -> matchesObject(e, kind, name)).toList();
 
         StringBuilder sb = new StringBuilder();
         sb.append("=== EVENTS FOR ").append(kind).append(" ");
@@ -149,11 +147,10 @@ public class EventsTool {
     // Internals
     // ──────────────────────────────────────────────────────────────────────────
 
-    private String renderEvents(List<Event> events, String header, String filter,
-                                Instant cutoff, String singleNamespace) {
+    private String renderEvents(
+            List<Event> events, String header, String filter, Instant cutoff, String singleNamespace) {
         StringBuilder sb = new StringBuilder();
-        sb.append("=== ").append(header)
-                .append("  filter=").append(filter);
+        sb.append("=== ").append(header).append("  filter=").append(filter);
         if (cutoff != null) sb.append("  since=").append(cutoff);
         sb.append(" ===\n\n");
 
@@ -167,7 +164,8 @@ public class EventsTool {
             if (FILTER_WARNING.equals(filter)) {
                 sb.append("Try typeFilter='All' to see Normal events too,\n");
                 sb.append("or widen sinceMinutes (currently ")
-                        .append(cutoff == null ? "unbounded" : cutoff).append(").\n");
+                        .append(cutoff == null ? "unbounded" : cutoff)
+                        .append(").\n");
             }
             return sb.toString();
         }
@@ -175,7 +173,8 @@ public class EventsTool {
         List<Event> sorted = sortByRecency(filtered);
         appendEventTable(sb, sorted.stream().limit(MAX_EVENTS).toList());
         if (sorted.size() > MAX_EVENTS) {
-            sb.append("\n... (").append(sorted.size() - MAX_EVENTS)
+            sb.append("\n... (")
+                    .append(sorted.size() - MAX_EVENTS)
                     .append(" more events not shown — narrow by typeFilter or sinceMinutes)\n");
         }
         appendCountsByReason(sb, filtered);
@@ -186,25 +185,31 @@ public class EventsTool {
     }
 
     private void appendEventTable(StringBuilder sb, List<Event> events) {
-        sb.append(String.format("%-25s  %-7s  %-22s  %-45s  %s%n",
-                "WHEN", "TYPE", "REASON", "OBJECT", "MESSAGE"));
+        sb.append(String.format("%-25s  %-7s  %-22s  %-45s  %s%n", "WHEN", "TYPE", "REASON", "OBJECT", "MESSAGE"));
         sb.append("-".repeat(150)).append('\n');
         for (Event e : events) {
             String when = bestTimestamp(e);
             String type = safe(e.getType());
             String reason = safe(e.getReason());
-            String obj = formatObject(e.getInvolvedObject(),
-                    Optional.ofNullable(e.getMetadata()).map(m -> m.getNamespace()).orElse(null));
+            String obj = formatObject(
+                    e.getInvolvedObject(),
+                    Optional.ofNullable(e.getMetadata())
+                            .map(m -> m.getNamespace())
+                            .orElse(null));
             String msg = safe(e.getMessage()).replaceAll("\\s+", " ");
-            sb.append(String.format("%-25s  %-7s  %-22s  %-45s  %s%n",
-                    truncate(when, 25), truncate(type, 7), truncate(reason, 22),
-                    truncate(obj, 45), truncate(msg, 200)));
+            sb.append(String.format(
+                    "%-25s  %-7s  %-22s  %-45s  %s%n",
+                    truncate(when, 25),
+                    truncate(type, 7),
+                    truncate(reason, 22),
+                    truncate(obj, 45),
+                    truncate(msg, 200)));
         }
     }
 
     private void appendCountsByReason(StringBuilder sb, List<Event> events) {
-        Map<String, Long> reasonCounts = events.stream()
-                .collect(Collectors.groupingBy(e -> safe(e.getReason()), Collectors.counting()));
+        Map<String, Long> reasonCounts =
+                events.stream().collect(Collectors.groupingBy(e -> safe(e.getReason()), Collectors.counting()));
         if (reasonCounts.isEmpty()) return;
         sb.append("\n[Counts by reason]\n");
         reasonCounts.entrySet().stream()
@@ -216,7 +221,9 @@ public class EventsTool {
     private void appendCountsByNamespace(StringBuilder sb, List<Event> events) {
         Map<String, Long> nsCounts = events.stream()
                 .collect(Collectors.groupingBy(
-                        e -> Optional.ofNullable(e.getMetadata()).map(m -> m.getNamespace()).orElse("?"),
+                        e -> Optional.ofNullable(e.getMetadata())
+                                .map(m -> m.getNamespace())
+                                .orElse("?"),
                         Collectors.counting()));
         if (nsCounts.size() <= 1) return;
         sb.append("\n[Counts by namespace]\n");
@@ -249,8 +256,7 @@ public class EventsTool {
 
     private List<Event> sortByRecency(List<Event> events) {
         return events.stream()
-                .sorted(Comparator.comparing(this::effectiveInstant,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .sorted(Comparator.comparing(this::effectiveInstant, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 
@@ -260,10 +266,12 @@ public class EventsTool {
                 e.getLastTimestamp(),
                 e.getFirstTimestamp(),
                 Optional.ofNullable(e.getEventTime()).map(MicroTime::getTime).orElse(null));
-        return candidates.filter(s -> s != null && !s.isBlank())
+        return candidates
+                .filter(s -> s != null && !s.isBlank())
                 .map(this::parseInstant)
                 .filter(java.util.Objects::nonNull)
-                .findFirst().orElse(null);
+                .findFirst()
+                .orElse(null);
     }
 
     private Instant parseInstant(String iso) {

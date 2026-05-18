@@ -3,11 +3,10 @@ package dev.datrollout.argus.observedetection.portforward;
 import dev.datrollout.argus.observedetection.model.ProbeTarget;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.LocalPortForward;
+import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
 
 /**
  * Opens on-demand port-forward tunnels through the Kubernetes API server via the
@@ -38,15 +37,16 @@ public class PortForwardManager {
      * @throws IOException if the tunnel cannot be established or the local port is invalid
      */
     public LocalPortForward open(ProbeTarget target, int remotePort) throws IOException {
-        log.debug("Opening port-forward for {} ({}) port {}",
-                target.key(), target.getSourceKind(), remotePort);
+        log.debug("Opening port-forward for {} ({}) port {}", target.key(), target.getSourceKind(), remotePort);
 
         LocalPortForward pf = target.getSourceKind() == ProbeTarget.SourceKind.POD
-                ? kubernetesClient.pods()
+                ? kubernetesClient
+                        .pods()
                         .inNamespace(target.getNamespace())
                         .withName(target.getServiceName())
                         .portForward(remotePort)
-                : kubernetesClient.services()
+                : kubernetesClient
+                        .services()
                         .inNamespace(target.getNamespace())
                         .withName(target.getServiceName())
                         .portForward(remotePort);
@@ -54,12 +54,10 @@ public class PortForwardManager {
         int localPort = pf.getLocalPort();
         if (localPort <= 0) {
             pf.close();
-            throw new IOException(
-                    "Port-forward returned invalid local port " + localPort + " for " + target.key());
+            throw new IOException("Port-forward returned invalid local port " + localPort + " for " + target.key());
         }
 
-        log.info("Port-forward ready: localhost:{} -> {} ({})",
-                localPort, target.key(), target.getSourceKind());
+        log.info("Port-forward ready: localhost:{} -> {} ({})", localPort, target.key(), target.getSourceKind());
         return pf;
     }
 }

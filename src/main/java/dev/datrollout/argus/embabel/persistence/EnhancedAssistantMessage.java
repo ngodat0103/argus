@@ -6,14 +6,13 @@ import com.embabel.chat.Asset;
 import com.embabel.chat.AssistantMessage;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.util.List;
 
 public class EnhancedAssistantMessage extends AssistantMessage {
 
@@ -65,19 +64,25 @@ public class EnhancedAssistantMessage extends AssistantMessage {
         super(content, name, null, List.of(), timestamp != null ? timestamp : Instant.now());
     }
 
-    public EnhancedAssistantMessage(@NotNull String content, @Nullable String name,
-            @Nullable Awaitable<?, ?> awaitable, @NotNull List<? extends Asset> assets,
+    public EnhancedAssistantMessage(
+            @NotNull String content,
+            @Nullable String name,
+            @Nullable Awaitable<?, ?> awaitable,
+            @NotNull List<? extends Asset> assets,
             @NotNull Instant timestamp) {
         super(content, name, awaitable, assets, timestamp);
     }
 
-    public EnhancedAssistantMessage(@NotNull String content, @Nullable String name,
-            @Nullable Awaitable<?, ?> awaitable, @NotNull List<? extends Asset> assets) {
+    public EnhancedAssistantMessage(
+            @NotNull String content,
+            @Nullable String name,
+            @Nullable Awaitable<?, ?> awaitable,
+            @NotNull List<? extends Asset> assets) {
         super(content, name, awaitable, assets);
     }
 
-    public EnhancedAssistantMessage(@NotNull String content, @Nullable String name,
-            @Nullable Awaitable<?, ?> awaitable) {
+    public EnhancedAssistantMessage(
+            @NotNull String content, @Nullable String name, @Nullable Awaitable<?, ?> awaitable) {
         super(content, name, awaitable);
     }
 
@@ -94,8 +99,6 @@ public class EnhancedAssistantMessage extends AssistantMessage {
 
     @Override
     public @NotNull List<LlmReference> references() {
-        return getAssets().stream()
-                .map(Asset::reference)
-                .toList();
+        return getAssets().stream().map(Asset::reference).toList();
     }
 }

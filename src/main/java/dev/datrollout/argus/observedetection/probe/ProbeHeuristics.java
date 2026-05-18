@@ -1,7 +1,6 @@
 package dev.datrollout.argus.observedetection.probe;
 
 import dev.datrollout.argus.observedetection.model.ProbeTarget;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -133,5 +132,4 @@ public final class ProbeHeuristics {
         }
         return false;
     }
-
 }

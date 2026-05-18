@@ -29,15 +29,13 @@ public class JpaJsonObjectMapperConfig {
     public Jackson2ObjectMapperBuilderCustomizer messageJacksonModuleCustomizer() {
         // modulesToInstall() ADDS to the auto-registered modules (e.g. JavaTimeModule);
         // modules() would REPLACE them and break Instant/OffsetDateTime handling.
-        return builder -> builder
-                .modulesToInstall(new MessageJacksonModule())
+        return builder -> builder.modulesToInstall(new MessageJacksonModule())
                 .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     @Bean
     public HibernatePropertiesCustomizer jsonFormatMapperCustomizer(ObjectMapper objectMapper) {
-        return properties -> properties.put(
-                AvailableSettings.JSON_FORMAT_MAPPER,
-                new JacksonJsonFormatMapper(objectMapper));
+        return properties ->
+                properties.put(AvailableSettings.JSON_FORMAT_MAPPER, new JacksonJsonFormatMapper(objectMapper));
     }
 }

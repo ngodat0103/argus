@@ -12,6 +12,5 @@ class MainApplicationTests {
     KubernetesClient kubernetesClient;
 
     @Test
-    void contextLoads() {
-    }
+    void contextLoads() {}
 }

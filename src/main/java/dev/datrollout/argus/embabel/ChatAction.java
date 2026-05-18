@@ -5,21 +5,17 @@ import com.embabel.agent.api.annotation.EmbabelComponent;
 import com.embabel.agent.api.common.ActionContext;
 import com.embabel.agent.api.common.OperationContext;
 import com.embabel.agent.prompt.persona.CoStar;
-import com.embabel.agent.tools.math.MathTools;
-import com.embabel.chat.AssistantMessage;
 import com.embabel.chat.Conversation;
 import com.embabel.chat.UserMessage;
-import com.embabel.common.ai.model.Thinking;
 import dev.datrollout.argus.kubernetes.embabel.EventsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.KubernetesResourceUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.LogsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.NetworkingDebuggingUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.SchedulingDiagnosticsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.WorkloadStateUnfoldingTool;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.Objects;
 
 @EmbabelComponent
 @RequiredArgsConstructor
@@ -114,8 +110,7 @@ public class ChatAction {
             - Keep prose minimal — the code is the answer
             - Do NOT use ### or ## headers; use *bold text* as a section label instead
             - Do NOT use HTML tags
-            """
-    );
+            """);
 
     private final KubernetesResourceUnfoldingTool kubernetesResourceUnfoldingTool;
     private final NetworkingDebuggingUnfoldingTool networkingDebuggingUnfoldingTool;
@@ -124,10 +119,11 @@ public class ChatAction {
     private final WorkloadStateUnfoldingTool workloadStateUnfoldingTool;
     private final SchedulingDiagnosticsUnfoldingTool schedulingDiagnosticsUnfoldingTool;
 
-    @Action(trigger = UserMessage.class,clearBlackboard = true)
+    @Action(trigger = UserMessage.class, clearBlackboard = true)
     public void defaultChat(Conversation conversation, OperationContext operationContext, ActionContext actionContext) {
-       var assistantMessage = operationContext.ai()
-               .withLlmByRole("reasoning")
+        var assistantMessage = operationContext
+                .ai()
+                .withLlmByRole("reasoning")
                 .withPromptContributor(coStar)
                 .withTool(kubernetesResourceUnfoldingTool)
                 .withTool(networkingDebuggingUnfoldingTool)

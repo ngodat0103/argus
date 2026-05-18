@@ -3,13 +3,12 @@ package dev.datrollout.argus.observedetection.client.registry;
 import dev.datrollout.argus.observedetection.client.ObservabilityClient;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -40,10 +39,7 @@ public class InMemoryClientRegistry implements ClientRegistry {
 
     @Override
     public <T extends ObservabilityClient> List<T> findByType(Class<T> type) {
-        return store.values().stream()
-                .filter(type::isInstance)
-                .map(type::cast)
-                .toList();
+        return store.values().stream().filter(type::isInstance).map(type::cast).toList();
     }
 
     @Override

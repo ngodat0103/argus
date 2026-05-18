@@ -12,5 +12,7 @@ public class CapabilityDetectedEvent extends ApplicationEvent {
         this.result = result;
     }
 
-    public DetectionResult getResult() { return result; }
+    public DetectionResult getResult() {
+        return result;
+    }
 }

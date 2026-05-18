@@ -2,11 +2,10 @@ package dev.datrollout.argus.kubernetes.embabel;
 
 import com.embabel.agent.api.tool.Tool;
 import com.embabel.agent.api.tool.progressive.UnfoldingTool;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -20,14 +19,12 @@ public class EventsUnfoldingTool implements UnfoldingTool {
 
     @Override
     public @NotNull Result call(@NotNull String input) {
-        return Result.text(
-                "Cluster Event tools are now available. Always start an incident investigation here — " +
-                "Events surface admission rejections, scheduler decisions, image pull failures, probe " +
-                "failures, OOM kills, and controller errors before anything else.\n" +
-                "Use listRecentEvents for a namespace-scoped Warning feed, listClusterEvents for a " +
-                "cluster-wide Warning feed (default Warning-only to keep the signal-to-noise ratio sane), " +
-                "and findEventsForObject when you already know exactly which object is failing."
-        );
+        return Result.text("Cluster Event tools are now available. Always start an incident investigation here — "
+                + "Events surface admission rejections, scheduler decisions, image pull failures, probe "
+                + "failures, OOM kills, and controller errors before anything else.\n"
+                + "Use listRecentEvents for a namespace-scoped Warning feed, listClusterEvents for a "
+                + "cluster-wide Warning feed (default Warning-only to keep the signal-to-noise ratio sane), "
+                + "and findEventsForObject when you already know exactly which object is failing.");
     }
 
     @Override
