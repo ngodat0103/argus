@@ -2,6 +2,8 @@ plugins {
     java
     id("org.springframework.boot") version "3.5.14"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.sonarqube") version "7.3.0.8198"
+    id("com.diffplug.spotless") version "8.5.1"
 }
 
 group = "dev.datrollout"
@@ -13,7 +15,19 @@ java {
         languageVersion = JavaLanguageVersion.of(25)
     }
 }
-
+sonar {
+    properties {
+        property("sonar.projectKey", "Argus")
+        property("sonar.projectName", "Argus")
+        property("sonar.host.url", "https://sonarqube.datrollout.dev")
+    }
+}
+spotless {
+    java { palantirJavaFormat() }
+}
+tasks.named("compileJava") {
+    dependsOn(tasks.named("spotlessApply"))
+}
 repositories {
     mavenCentral()
     maven {
@@ -43,12 +57,18 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     runtimeOnly("org.postgresql:postgresql")
 
+    //web
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("io.micrometer:micrometer-registry-prometheus")
-    implementation("io.fabric8:kubernetes-client:7.7.0")
-    implementation("org.projectlombok:lombok")
 
+    // Metrics
+    implementation("io.micrometer:micrometer-registry-prometheus")
+
+    // Kubernetes API library
+    implementation("io.fabric8:kubernetes-client:7.7.0")
+
+    // Utils
+    implementation("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
