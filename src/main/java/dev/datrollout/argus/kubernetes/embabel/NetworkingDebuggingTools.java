@@ -27,6 +27,10 @@ import io.fabric8.kubernetes.api.model.networking.v1.NetworkPolicySpec;
 import io.fabric8.kubernetes.api.model.networking.v1.ServiceBackendPort;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.ExecWatch;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -36,6 +40,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -420,10 +427,15 @@ public class NetworkingDebuggingTools {
 
     @LlmTool(name = "inspectIngressRouting", description = """
                     Use this tool when an Ingress returns 404, "default backend", "no route", a TLS
-                    error, or shows a pending external address. Returns ingressClassName, all rules
-                    (host/path/pathType/backend), TLS sections with secret existence, LoadBalancer
-                    status, backend Service existence + endpoint counts, and a SUSPICIONS block for
-                    missing backends, missing TLS secrets, wrong path types, or unbound LB.
+                    error, or shows a pending external address. Returns ingressClassName, ALL
+                    annotations on the Ingress (essential for Traefik/ingress-nginx behaviour —
+                    SSL termination, redirects, backend protocol, rewrites, cert-manager wiring
+                    are all configured via annotations), all rules (host/path/pathType/backend),
+                    TLS sections with secret existence, LoadBalancer status, backend Service
+                    existence + endpoint counts, and a SUSPICIONS block for missing backends,
+                    missing TLS secrets, wrong path types, or unbound LB. The SUSPICIONS block
+                    is annotation-aware: it recognises Traefik annotation-driven TLS and
+                    cert-manager-managed secrets, so it does not falsely flag those as missing.
                     """)
     public String inspectIngressRouting(String namespace, String ingressName) {
         Ingress ing = kubernetesClient
@@ -451,6 +463,19 @@ public class NetworkingDebuggingTools {
         if (className == null) {
             sb.append("    (no explicit class — the cluster default IngressClass will handle this,\n");
             sb.append("     or it will be ignored if no default exists)\n");
+        }
+
+        Map<String, String> annotations =
+                Optional.ofNullable(ing.getMetadata().getAnnotations()).orElse(Collections.emptyMap());
+        if (annotations.isEmpty()) {
+            sb.append("  annotations: (none)\n");
+        } else {
+            sb.append("  annotations (").append(annotations.size()).append("):\n");
+            annotations.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> sb.append("    ")
+                    .append(e.getKey())
+                    .append(": ")
+                    .append(e.getValue())
+                    .append("\n"));
         }
 
         IngressBackend def =
@@ -603,11 +628,42 @@ public class NetworkingDebuggingTools {
             sb.append("  - status.loadBalancer is empty. The ingress controller has not assigned an\n");
             sb.append("    external address. Check controller pods and service-of-type-LoadBalancer.\n");
         }
+        boolean certManagerManaged = annotations.containsKey("cert-manager.io/cluster-issuer")
+                || annotations.containsKey("cert-manager.io/issuer");
         for (IngressTLS t : tls) {
             if (t.getSecretName() != null && !secretExists(namespace, t.getSecretName())) {
-                sb.append("  - TLS secret '")
-                        .append(t.getSecretName())
-                        .append("' is referenced but missing — handshake will fail.\n");
+                if (certManagerManaged) {
+                    sb.append("  - TLS secret '")
+                            .append(t.getSecretName())
+                            .append("' is missing, but cert-manager annotations are present\n")
+                            .append("    (")
+                            .append(annotations.getOrDefault(
+                                    "cert-manager.io/cluster-issuer",
+                                    annotations.getOrDefault("cert-manager.io/issuer", "")))
+                            .append("). cert-manager will create the secret; verify the Certificate\n")
+                            .append("    resource and its issuer status if the secret never appears.\n");
+                } else {
+                    sb.append("  - TLS secret '")
+                            .append(t.getSecretName())
+                            .append("' is referenced but missing — handshake will fail.\n");
+                }
+            }
+        }
+        if (tls.isEmpty()) {
+            String traefikTls = annotations.get("traefik.ingress.kubernetes.io/router.tls");
+            String traefikEntrypoints = annotations.get("traefik.ingress.kubernetes.io/router.entrypoints");
+            boolean traefikAnnotationDrivenTls = "true".equalsIgnoreCase(traefikTls)
+                    || (traefikEntrypoints != null && traefikEntrypoints.contains("websecure"));
+            if (traefikAnnotationDrivenTls) {
+                sb.append("  - NOTE: spec.tls is empty BUT Traefik annotations request TLS\n")
+                        .append("    (router.tls=")
+                        .append(safe(traefikTls))
+                        .append(", router.entrypoints=")
+                        .append(safe(traefikEntrypoints))
+                        .append("). Traefik resolves the certificate itself (default cert, file\n")
+                        .append("    provider, or ACME resolver) — no Kubernetes Secret is required here.\n")
+                        .append("    Do NOT flag this as 'missing TLS'. Inspect the Traefik controller\n")
+                        .append("    config (entrypoints + certResolver) instead.\n");
             }
         }
         if (anyMissing) {
@@ -778,6 +834,595 @@ public class NetworkingDebuggingTools {
             }
         });
         return sb.toString();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Live connectivity probe (creates an ephemeral netshoot debug pod)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private static final String DEBUG_POD_LABEL_KEY = "argus.dev/debug";
+    private static final String DEBUG_POD_LABEL_VALUE = "true";
+    private static final String DEBUG_POD_REF_KEY = "argus.dev/reference-pod";
+    private static final String NETSHOOT_IMAGE = "nicolaka/netshoot:latest";
+    private static final String PROBE_CONTAINER_NAME = "netshoot";
+    private static final long PROBE_POD_READY_TIMEOUT_SEC = 60L;
+    private static final long PROBE_EXEC_TIMEOUT_SEC = 15L;
+    private static final long PROBE_POD_SLEEP_SECONDS = 300L;
+    private static final long STALE_DEBUG_POD_AGE_SEC = 300L;
+
+    /**
+     * Labels stripped from the reference pod when building the probe.
+     *
+     * <p>Auto-generated by workload controllers; copying them does not help (they are namespaced
+     * to a specific controller revision) and risks confusing controllers that watch them.
+     */
+    private static final Set<String> STRIP_LABELS = Set.of(
+            "pod-template-hash",
+            "controller-revision-hash",
+            "statefulset.kubernetes.io/pod-name",
+            "apps.kubernetes.io/pod-index",
+            "batch.kubernetes.io/job-name",
+            "batch.kubernetes.io/controller-uid",
+            "job-name",
+            "controller-uid");
+
+    private record ExecResult(int exitCode, String stdout, String stderr, String error) {
+        boolean ok() {
+            return error == null && exitCode == 0;
+        }
+    }
+
+    @LlmTool(name = "probeConnectivityFromPod", description = """
+                    Use this tool when API-level checks (Services, Endpoints, NetworkPolicies, CNI
+                    pods) look healthy but a workload still cannot reach a target host or port, OR
+                    when you explicitly need packet-level evidence (DNS lookup, ICMP, TCP connect)
+                    rather than API state. Creates a TEMPORARY nicolaka/netshoot debug pod in the
+                    same namespace as referencePodName, mirroring its scheduling + network +
+                    identity (nodeName, labels, serviceAccount, tolerations, dnsPolicy/dnsConfig,
+                    imagePullSecrets, hostNetwork/hostPID/hostIPC, hostAliases, pod-level
+                    securityContext, priorityClassName) so NetworkPolicy/DNS/firewall behaviour is
+                    identical to the reference workload. Runs nslookup / ping / TCP-connect against
+                    targetHost[:targetPort], then ALWAYS deletes the pod (even on errors). Pass
+                    targetPort=0 to skip the TCP check. Returns Evidence (raw stdout/stderr +
+                    exit codes for each command), a Pattern matrix (DNS vs ICMP vs TCP), and
+                    SUSPICIONS. Requires the cluster to be able to pull nicolaka/netshoot and to
+                    allow NET_RAW for ping (PSA-restricted namespaces may block this — the tool
+                    surfaces that as a finding rather than failing silently).
+                    """)
+    public String probeConnectivityFromPod(
+            String namespace, String referencePodName, String targetHost, int targetPort) {
+        if (namespace == null || namespace.isBlank()) {
+            return "ERROR: namespace is required.";
+        }
+        if (referencePodName == null || referencePodName.isBlank()) {
+            return "ERROR: referencePodName is required (the pod whose network position should be mimicked).";
+        }
+        if (targetHost == null || targetHost.isBlank()) {
+            return "ERROR: targetHost is required.";
+        }
+
+        Pod reference = kubernetesClient
+                .pods()
+                .inNamespace(namespace)
+                .withName(referencePodName)
+                .get();
+        if (reference == null) {
+            return "ERROR: reference pod " + namespace + "/" + referencePodName + " not found.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== CONNECTIVITY PROBE: ")
+                .append(namespace)
+                .append("/")
+                .append(referencePodName)
+                .append(" → ")
+                .append(targetHost);
+        if (targetPort > 0) sb.append(":").append(targetPort);
+        sb.append(" ===\n\n");
+
+        sweepStaleDebugPods(namespace, sb);
+
+        String probeName = "argus-netshoot-"
+                + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        Pod probeSpec = buildProbePod(reference, probeName);
+
+        String createdName = null;
+        try {
+            Pod created = kubernetesClient
+                    .pods()
+                    .inNamespace(namespace)
+                    .resource(probeSpec)
+                    .create();
+            createdName = created.getMetadata().getName();
+
+            Pod ready;
+            try {
+                ready = kubernetesClient
+                        .pods()
+                        .inNamespace(namespace)
+                        .withName(createdName)
+                        .waitUntilCondition(
+                                p -> p != null
+                                        && p.getStatus() != null
+                                        && "Running".equals(p.getStatus().getPhase()),
+                                PROBE_POD_READY_TIMEOUT_SEC,
+                                TimeUnit.SECONDS);
+            } catch (Exception waitEx) {
+                Pod latest = kubernetesClient
+                        .pods()
+                        .inNamespace(namespace)
+                        .withName(createdName)
+                        .get();
+                appendProbePodNotReady(sb, namespace, createdName, latest, waitEx);
+                return sb.toString();
+            }
+
+            appendProbePodHeader(sb, ready, reference);
+
+            ExecResult dns = execInPod(
+                    namespace,
+                    createdName,
+                    PROBE_CONTAINER_NAME,
+                    List.of("nslookup", targetHost),
+                    PROBE_EXEC_TIMEOUT_SEC);
+            appendExecBlock(sb, "DNS", "nslookup " + targetHost, dns);
+
+            ExecResult icmp = execInPod(
+                    namespace,
+                    createdName,
+                    PROBE_CONTAINER_NAME,
+                    List.of("ping", "-c", "3", "-W", "2", targetHost),
+                    PROBE_EXEC_TIMEOUT_SEC);
+            appendExecBlock(sb, "ICMP", "ping -c3 -W2 " + targetHost, icmp);
+
+            ExecResult tcp = null;
+            if (targetPort > 0) {
+                tcp = execInPod(
+                        namespace,
+                        createdName,
+                        PROBE_CONTAINER_NAME,
+                        List.of("nc", "-zv", "-w", "5", targetHost, String.valueOf(targetPort)),
+                        PROBE_EXEC_TIMEOUT_SEC);
+                appendExecBlock(sb, "TCP", "nc -zv -w5 " + targetHost + " " + targetPort, tcp);
+            } else {
+                sb.append("[TCP] (skipped — targetPort=0)\n\n");
+            }
+
+            appendProbePattern(sb, dns, icmp, tcp, targetPort);
+            appendProbeSuspicions(sb, dns, icmp, tcp, targetPort, namespace, referencePodName);
+            return sb.toString();
+        } catch (Exception ex) {
+            sb.append("\n⚠ Probe failed: ")
+                    .append(ex.getClass().getSimpleName())
+                    .append(": ")
+                    .append(ex.getMessage())
+                    .append("\n");
+            log.warn(
+                    "probeConnectivityFromPod failed for {}/{} → {}: {}",
+                    namespace,
+                    referencePodName,
+                    targetHost,
+                    ex.toString());
+            return sb.toString();
+        } finally {
+            if (createdName != null) {
+                try {
+                    kubernetesClient
+                            .pods()
+                            .inNamespace(namespace)
+                            .withName(createdName)
+                            .withGracePeriod(0L)
+                            .delete();
+                } catch (Exception cleanupEx) {
+                    log.warn("failed to delete probe pod {}/{}: {}", namespace, createdName, cleanupEx.getMessage());
+                }
+            }
+        }
+    }
+
+    private Pod buildProbePod(Pod reference, String probeName) {
+        ObjectMeta refMeta = reference.getMetadata();
+        PodSpec refSpec = reference.getSpec();
+
+        Map<String, String> labels = new LinkedHashMap<>();
+        if (refMeta != null && refMeta.getLabels() != null) {
+            for (Map.Entry<String, String> e : refMeta.getLabels().entrySet()) {
+                if (STRIP_LABELS.contains(e.getKey())) continue;
+                labels.put(e.getKey(), e.getValue());
+            }
+        }
+        labels.put(DEBUG_POD_LABEL_KEY, DEBUG_POD_LABEL_VALUE);
+        labels.put(DEBUG_POD_REF_KEY, refMeta != null ? safeLabelValue(refMeta.getName()) : "unknown");
+
+        Map<String, String> annotations = new LinkedHashMap<>();
+        annotations.put("argus.dev/created-by", "NetworkingDebuggingTools");
+        annotations.put("argus.dev/created-at", Instant.now().toString());
+
+        ObjectMeta meta = new ObjectMeta();
+        meta.setName(probeName);
+        meta.setNamespace(refMeta != null ? refMeta.getNamespace() : null);
+        meta.setLabels(labels);
+        meta.setAnnotations(annotations);
+
+        // Point ownerReference at the reference pod so workload controllers
+        // (DaemonSet / ReplicaSet / StatefulSet / Job) will not adopt the probe pod
+        // and delete it as a "duplicate". A pod with any controller-owner is skipped
+        // by the controller adoption logic.
+        if (refMeta != null && refMeta.getUid() != null && !refMeta.getUid().isBlank()) {
+            OwnerReference ownerRef = new OwnerReference();
+            ownerRef.setApiVersion("v1");
+            ownerRef.setKind("Pod");
+            ownerRef.setName(refMeta.getName());
+            ownerRef.setUid(refMeta.getUid());
+            ownerRef.setController(Boolean.TRUE);
+            ownerRef.setBlockOwnerDeletion(Boolean.FALSE);
+            meta.setOwnerReferences(List.of(ownerRef));
+        }
+
+        PodSpec spec = new PodSpec();
+        spec.setRestartPolicy("Never");
+        spec.setActiveDeadlineSeconds(300L);
+        spec.setTerminationGracePeriodSeconds(1L);
+        if (refSpec != null) {
+            spec.setNodeName(refSpec.getNodeName());
+            spec.setServiceAccountName(refSpec.getServiceAccountName());
+            spec.setAutomountServiceAccountToken(refSpec.getAutomountServiceAccountToken());
+            spec.setTolerations(refSpec.getTolerations());
+            spec.setImagePullSecrets(refSpec.getImagePullSecrets());
+            spec.setDnsPolicy(refSpec.getDnsPolicy());
+            spec.setDnsConfig(refSpec.getDnsConfig());
+            spec.setHostNetwork(refSpec.getHostNetwork());
+            spec.setHostPID(refSpec.getHostPID());
+            spec.setHostIPC(refSpec.getHostIPC());
+            spec.setHostAliases(refSpec.getHostAliases());
+            spec.setSecurityContext(refSpec.getSecurityContext());
+            spec.setPriorityClassName(refSpec.getPriorityClassName());
+        }
+
+        Container container = new Container();
+        container.setName(PROBE_CONTAINER_NAME);
+        container.setImage(NETSHOOT_IMAGE);
+        container.setImagePullPolicy("IfNotPresent");
+        container.setCommand(List.of("sleep", String.valueOf(PROBE_POD_SLEEP_SECONDS)));
+
+        SecurityContext containerSc = new SecurityContext();
+        Capabilities caps = new Capabilities();
+        caps.setAdd(List.of("NET_RAW"));
+        containerSc.setCapabilities(caps);
+        container.setSecurityContext(containerSc);
+
+        ResourceRequirements resources = new ResourceRequirements();
+        Map<String, Quantity> requests = new LinkedHashMap<>();
+        requests.put("cpu", new Quantity("10m"));
+        requests.put("memory", new Quantity("32Mi"));
+        Map<String, Quantity> limits = new LinkedHashMap<>();
+        limits.put("cpu", new Quantity("200m"));
+        limits.put("memory", new Quantity("128Mi"));
+        resources.setRequests(requests);
+        resources.setLimits(limits);
+        container.setResources(resources);
+
+        spec.setContainers(List.of(container));
+
+        Pod pod = new Pod();
+        pod.setMetadata(meta);
+        pod.setSpec(spec);
+        return pod;
+    }
+
+    /** Kubernetes label values must be ≤63 chars and match a strict regex; we only need a hint. */
+    private String safeLabelValue(String v) {
+        if (v == null) return "unknown";
+        String trimmed = v.replaceAll("[^A-Za-z0-9_.-]", "-");
+        return trimmed.length() > 63 ? trimmed.substring(0, 63) : trimmed;
+    }
+
+    private void sweepStaleDebugPods(String namespace, StringBuilder sb) {
+        try {
+            List<Pod> stale = kubernetesClient
+                    .pods()
+                    .inNamespace(namespace)
+                    .withLabel(DEBUG_POD_LABEL_KEY, DEBUG_POD_LABEL_VALUE)
+                    .list()
+                    .getItems();
+            Instant cutoff = Instant.now().minusSeconds(STALE_DEBUG_POD_AGE_SEC);
+            int deleted = 0;
+            for (Pod p : stale) {
+                String ts = p.getMetadata().getCreationTimestamp();
+                if (ts == null) continue;
+                Instant created;
+                try {
+                    created = Instant.parse(ts);
+                } catch (Exception parseEx) {
+                    continue;
+                }
+                if (created.isBefore(cutoff)) {
+                    try {
+                        kubernetesClient
+                                .pods()
+                                .inNamespace(namespace)
+                                .withName(p.getMetadata().getName())
+                                .withGracePeriod(0L)
+                                .delete();
+                        deleted++;
+                    } catch (Exception ignored) {
+                        // best-effort sweep
+                    }
+                }
+            }
+            if (deleted > 0) {
+                sb.append("[Cleanup] removed ")
+                        .append(deleted)
+                        .append(" stale argus debug pod(s) older than ")
+                        .append(STALE_DEBUG_POD_AGE_SEC)
+                        .append("s.\n\n");
+            }
+        } catch (Exception e) {
+            log.debug("stale debug pod sweep failed for ns {}: {}", namespace, e.getMessage());
+        }
+    }
+
+    private void appendProbePodHeader(StringBuilder sb, Pod probe, Pod reference) {
+        ObjectMeta pm = probe.getMetadata();
+        PodSpec ps = probe.getSpec();
+        sb.append("[Probe pod] ")
+                .append(pm.getName())
+                .append("  node=")
+                .append(safe(ps == null ? null : ps.getNodeName()))
+                .append("  sa=")
+                .append(safe(ps == null ? null : ps.getServiceAccountName()))
+                .append("  hostNetwork=")
+                .append(ps != null && Boolean.TRUE.equals(ps.getHostNetwork()))
+                .append("  dnsPolicy=")
+                .append(safe(ps == null ? null : ps.getDnsPolicy()))
+                .append("\n");
+        ObjectMeta rm = reference.getMetadata();
+        PodSpec rs = reference.getSpec();
+        sb.append("[Mirrored from] ")
+                .append(rm.getNamespace())
+                .append("/")
+                .append(rm.getName())
+                .append("  labels=")
+                .append(Optional.ofNullable(rm.getLabels()).orElse(Collections.emptyMap()))
+                .append("  serviceAccount=")
+                .append(safe(rs == null ? null : rs.getServiceAccountName()))
+                .append("\n");
+        List<OwnerReference> owners =
+                Optional.ofNullable(pm.getOwnerReferences()).orElse(Collections.emptyList());
+        if (!owners.isEmpty()) {
+            OwnerReference o = owners.get(0);
+            sb.append("[Adoption guard] ownerReference -> ")
+                    .append(safe(o.getKind()))
+                    .append("/")
+                    .append(safe(o.getName()))
+                    .append(" (controller=true) — workload controllers will not claim this probe.\n");
+        }
+        Map<String, String> refLabels = Optional.ofNullable(rm.getLabels()).orElse(Collections.emptyMap());
+        List<String> stripped = refLabels.keySet().stream()
+                .filter(STRIP_LABELS::contains)
+                .sorted()
+                .toList();
+        if (!stripped.isEmpty()) {
+            sb.append("[Stripped labels] ")
+                    .append(String.join(", ", stripped))
+                    .append(" (auto-managed by workload controllers; not copied to the probe)\n");
+        }
+        sb.append("\n");
+    }
+
+    private void appendExecBlock(StringBuilder sb, String tag, String cmd, ExecResult r) {
+        sb.append("[").append(tag).append("] ").append(cmd).append("\n");
+        sb.append("  exitCode=").append(r.exitCode());
+        if (r.error() != null) {
+            sb.append("  error=").append(r.error());
+        }
+        sb.append("\n");
+        if (!r.stdout().isBlank()) {
+            sb.append("  stdout:\n");
+            appendIndented(sb, r.stdout(), "    ");
+        }
+        if (!r.stderr().isBlank()) {
+            sb.append("  stderr:\n");
+            appendIndented(sb, r.stderr(), "    ");
+        }
+        sb.append("\n");
+    }
+
+    private void appendIndented(StringBuilder sb, String text, String prefix) {
+        for (String line : text.split("\\R")) {
+            sb.append(prefix).append(line).append("\n");
+        }
+    }
+
+    private void appendProbePodNotReady(
+            StringBuilder sb, String namespace, String podName, Pod latest, Exception waitEx) {
+        sb.append("[Probe pod] ")
+                .append(podName)
+                .append("  ⚠ NEVER REACHED Running within ")
+                .append(PROBE_POD_READY_TIMEOUT_SEC)
+                .append("s\n");
+        sb.append("  wait error: ")
+                .append(waitEx.getClass().getSimpleName())
+                .append(": ")
+                .append(waitEx.getMessage())
+                .append("\n");
+        if (latest != null && latest.getStatus() != null) {
+            PodStatus st = latest.getStatus();
+            sb.append("  phase=").append(safe(st.getPhase())).append("\n");
+            if (st.getReason() != null)
+                sb.append("  reason=").append(st.getReason()).append("\n");
+            if (st.getMessage() != null)
+                sb.append("  message=").append(st.getMessage()).append("\n");
+            List<PodCondition> conds = Optional.ofNullable(st.getConditions()).orElse(Collections.emptyList());
+            if (!conds.isEmpty()) {
+                sb.append("  conditions:\n");
+                for (PodCondition c : conds) {
+                    sb.append("    - ")
+                            .append(c.getType())
+                            .append("=")
+                            .append(c.getStatus())
+                            .append(c.getReason() != null ? "  reason=" + c.getReason() : "")
+                            .append(c.getMessage() != null ? "  message=" + c.getMessage() : "")
+                            .append("\n");
+                }
+            }
+            List<ContainerStatus> cstats =
+                    Optional.ofNullable(st.getContainerStatuses()).orElse(Collections.emptyList());
+            for (ContainerStatus cs : cstats) {
+                ContainerStateWaiting w =
+                        cs.getState() == null ? null : cs.getState().getWaiting();
+                if (w != null) {
+                    sb.append("  container[")
+                            .append(cs.getName())
+                            .append("].waiting: ")
+                            .append(safe(w.getReason()))
+                            .append(" — ")
+                            .append(safe(w.getMessage()))
+                            .append("\n");
+                }
+            }
+        }
+        List<Event> events = fetchObjectEvents(namespace, podName);
+        appendEvents(sb, events, "Probe Pod Events");
+        sb.append("\n[SUSPICIONS]\n");
+        sb.append("  - Probe pod could not start. Likely causes:\n");
+        sb.append("      • image pull failure (cluster cannot reach docker.io for ")
+                .append(NETSHOOT_IMAGE)
+                .append(")\n");
+        sb.append("      • PodSecurityAdmission rejection (NET_RAW capability or hostNetwork blocked)\n");
+        sb.append("      • scheduling failure (nodeName from reference is cordoned or gone)\n");
+        sb.append("      • ResourceQuota / LimitRange in the namespace blocked the pod\n");
+        sb.append("    Inspect the events above and consider running with a different reference pod.\n");
+    }
+
+    private void appendProbePattern(StringBuilder sb, ExecResult dns, ExecResult icmp, ExecResult tcp, int targetPort) {
+        sb.append("[Pattern]\n");
+        sb.append("  DNS=").append(dns.ok() ? "ok" : "fail");
+        sb.append("  ICMP=").append(icmp.ok() ? "ok" : "fail");
+        if (targetPort > 0 && tcp != null) {
+            sb.append("  TCP=").append(tcp.ok() ? "ok" : "fail");
+        } else {
+            sb.append("  TCP=skipped");
+        }
+        sb.append("\n\n");
+    }
+
+    private void appendProbeSuspicions(
+            StringBuilder sb,
+            ExecResult dns,
+            ExecResult icmp,
+            ExecResult tcp,
+            int targetPort,
+            String namespace,
+            String referencePodName) {
+        sb.append("[SUSPICIONS]\n");
+        boolean dnsOk = dns.ok();
+        boolean icmpOk = icmp.ok();
+        boolean tcpOk = tcp != null && tcp.ok();
+        boolean tcpRan = targetPort > 0 && tcp != null;
+
+        if (containsPermissionDenied(icmp)) {
+            sb.append("  - ping failed with EPERM/operation-not-permitted — NET_RAW was dropped\n");
+            sb.append("    (PodSecurityAdmission 'restricted' or 'baseline' likely). ICMP result is\n");
+            sb.append("    not reliable; rely on the TCP probe and DNS check instead.\n");
+        }
+
+        if (!dnsOk && !icmpOk && !tcpOk) {
+            sb.append("  - All checks failed. DNS is broken at minimum. Investigate CoreDNS/kube-dns\n");
+            sb.append("    health, the pod's dnsPolicy and dnsConfig, and any egress NetworkPolicy.\n");
+            sb.append("    Next: inspectServiceConnectivity kube-system/kube-dns, then\n");
+            sb.append("    inspectNetworkPoliciesForPod ")
+                    .append(namespace)
+                    .append(" ")
+                    .append(referencePodName)
+                    .append(".\n");
+            return;
+        }
+
+        if (!dnsOk) {
+            sb.append("  - DNS lookup failed. Likely CoreDNS unreachable, search domain wrong,\n");
+            sb.append("    NetworkPolicy egress blocking UDP/53, or the name simply doesn't exist.\n");
+            sb.append("    Next: inspectServiceConnectivity kube-system/kube-dns.\n");
+        }
+
+        if (dnsOk && tcpRan && !tcpOk) {
+            sb.append("  - DNS resolves but TCP connect failed. Most likely culprits:\n");
+            sb.append("      • NetworkPolicy egress (or peer ingress) is dropping the flow\n");
+            sb.append("      • Target Service has zero ready endpoints on that port\n");
+            sb.append("      • A node-level firewall (iptables/eBPF) or cloud SG is dropping packets\n");
+            sb.append("    Next: inspectNetworkPoliciesForPod ")
+                    .append(namespace)
+                    .append(" ")
+                    .append(referencePodName)
+                    .append(", then inspectServiceConnectivity for the target Service.\n");
+        }
+
+        if (dnsOk && !icmpOk && tcpRan && tcpOk) {
+            sb.append("  - DNS + TCP both succeed; only ICMP fails. ICMP is commonly filtered by\n");
+            sb.append("    cloud SDN/SG layers and by some CNIs — treat this as benign.\n");
+        }
+
+        if (dnsOk && icmpOk && tcpRan && !tcpOk) {
+            sb.append("  - Host is reachable (ICMP) but the TCP port refuses. The target Service\n");
+            sb.append("    likely has no process listening on that port, the pod is not Ready, or\n");
+            sb.append("    a targetPort/containerPort mismatch is sending traffic to the wrong port.\n");
+        }
+
+        if (dnsOk && tcpRan && tcpOk) {
+            sb.append("  - Packet path looks good. If the application still fails, the issue is\n");
+            sb.append("    application-layer (TLS handshake, HTTP host header, auth, app crash).\n");
+        }
+
+        if (!tcpRan && dnsOk) {
+            sb.append("  - No TCP port supplied — only DNS + ICMP were checked. Re-run with the\n");
+            sb.append("    target port to validate the actual service port.\n");
+        }
+    }
+
+    private boolean containsPermissionDenied(ExecResult r) {
+        String haystack = (r.stderr() + " " + r.stdout()).toLowerCase();
+        return haystack.contains("operation not permitted")
+                || haystack.contains("permission denied")
+                || haystack.contains("socket: permission denied");
+    }
+
+    private ExecResult execInPod(
+            String namespace, String podName, String container, List<String> cmd, long timeoutSec) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (ExecWatch watch = kubernetesClient
+                .pods()
+                .inNamespace(namespace)
+                .withName(podName)
+                .inContainer(container)
+                .writingOutput(out)
+                .writingError(err)
+                .exec(cmd.toArray(new String[0]))) {
+            Integer code = watch.exitCode().get(timeoutSec, TimeUnit.SECONDS);
+            return new ExecResult(
+                    code == null ? -1 : code,
+                    out.toString(StandardCharsets.UTF_8),
+                    err.toString(StandardCharsets.UTF_8),
+                    null);
+        } catch (TimeoutException te) {
+            return new ExecResult(
+                    -1,
+                    out.toString(StandardCharsets.UTF_8),
+                    err.toString(StandardCharsets.UTF_8),
+                    "timeout after " + timeoutSec + "s");
+        } catch (KubernetesClientException kce) {
+            return new ExecResult(
+                    -1,
+                    out.toString(StandardCharsets.UTF_8),
+                    err.toString(StandardCharsets.UTF_8),
+                    "KubernetesClientException: " + kce.getMessage());
+        } catch (Exception e) {
+            return new ExecResult(
+                    -1,
+                    out.toString(StandardCharsets.UTF_8),
+                    err.toString(StandardCharsets.UTF_8),
+                    e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────────
