@@ -65,7 +65,7 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
 
     // Kubernetes API library
-    implementation("io.fabric8:kubernetes-client:7.7.0")
+    implementation("io.fabric8:kubernetes-client:7.3.2")
 
     // Utils
     implementation("org.projectlombok:lombok")

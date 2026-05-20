@@ -24,8 +24,8 @@ public class PostgresqlConversationFactory implements ConversationFactory {
 
     @Override
     public @NotNull Conversation create(@NotNull String conversationId) {
-        PostgresqlConversation conversation =
-                new PostgresqlConversation(this.conversationJpaRepository, conversationId, conversationId);
+        PostgresqlConversation conversation = new PostgresqlConversation(
+                this.conversationJpaRepository, chatPlatformIdFrom(conversationId), conversationId);
         this.conversationJpaRepository.save(conversation);
         return conversation;
     }
@@ -34,7 +34,8 @@ public class PostgresqlConversationFactory implements ConversationFactory {
     public @Nullable Conversation load(@NotNull String conversationId) {
         // Read newest-first to tolerate duplicate documents and keep service available.
         List<PostgresqlConversation> conversations =
-                this.conversationJpaRepository.findAllByConversationIdOrderByCreatedAtDesc(conversationId);
+                this.conversationJpaRepository.findAllByConversationIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        conversationId);
         if (conversations == null || conversations.isEmpty()) {
             return null;
         }
@@ -48,5 +49,13 @@ public class PostgresqlConversationFactory implements ConversationFactory {
         PostgresqlConversation conversation = conversations.getFirst();
         conversation.setConversationJpaRepository(this.conversationJpaRepository);
         return conversation;
+    }
+
+    private static String chatPlatformIdFrom(String conversationId) {
+        String[] parts = conversationId.split(":");
+        if (parts.length == 4 && "telegram".equals(parts[0])) {
+            return parts[1];
+        }
+        return conversationId;
     }
 }

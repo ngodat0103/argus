@@ -10,9 +10,12 @@ public interface ConversationJpaRepository extends JpaRepository<PostgresqlConve
     Optional<PostgresqlConversation> findByConversationId(String conversationId);
 
     // Duplicate rows can exist for the same conversation id; caller resolves latest safely.
-    List<PostgresqlConversation> findAllByConversationIdOrderByCreatedAtDesc(String conversationId);
+    List<PostgresqlConversation> findAllByConversationIdAndDeletedAtIsNullOrderByCreatedAtDesc(String conversationId);
 
-    List<PostgresqlConversation> findByChatPlatformIdAndCreatedAtBetween(
+    List<PostgresqlConversation> findByChatPlatformIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+            String chatPlatformId, OffsetDateTime from, OffsetDateTime to);
+
+    List<PostgresqlConversation> findByChatPlatformIdAndCreatedAtBetweenAndDeletedAtIsNullOrderByCreatedAtDesc(
             String chatPlatformId, OffsetDateTime from, OffsetDateTime to);
 
     List<PostgresqlConversation> findByCreatedAtBetweenAndSummaryConversationIsNull(

@@ -24,6 +24,7 @@ import org.jetbrains.annotations.Nullable;
         indexes = {
             @Index(name = "conversation_chat_platform_id_idx", columnList = "chat_platform_id"),
             @Index(name = "conversation_created_at_idx", columnList = "created_at"),
+            @Index(name = "conversation_deleted_at_idx", columnList = "deleted_at"),
         })
 public class PostgresqlConversation implements Conversation {
 
@@ -42,6 +43,10 @@ public class PostgresqlConversation implements Conversation {
     @Column(name = "created_at", nullable = false)
     @Getter
     private OffsetDateTime createdAt;
+
+    @Column(name = "deleted_at")
+    @Getter
+    private OffsetDateTime deletedAt;
 
     @Column(name = "summary_conversation", columnDefinition = "text")
     @Getter
@@ -67,6 +72,14 @@ public class PostgresqlConversation implements Conversation {
         this.conversationId = conversationId;
         this.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
         this.messages = new LinkedList<>();
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public void softDelete() {
+        this.deletedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     // ---- Conversation interface ----
@@ -96,7 +109,7 @@ public class PostgresqlConversation implements Conversation {
 
     @Override
     public @NotNull String getId() {
-        return this.chatPlatformId;
+        return this.conversationId;
     }
 
     @Override
