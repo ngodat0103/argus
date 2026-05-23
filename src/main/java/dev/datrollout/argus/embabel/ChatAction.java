@@ -7,6 +7,7 @@ import com.embabel.agent.api.common.OperationContext;
 import com.embabel.agent.prompt.persona.CoStar;
 import com.embabel.chat.Conversation;
 import com.embabel.chat.UserMessage;
+import dev.datrollout.argus.kubernetes.embabel.ConfigMapUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.EventsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.KubernetesResourceUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.LogsUnfoldingTool;
@@ -118,6 +119,7 @@ public class ChatAction {
     private final EventsUnfoldingTool eventsUnfoldingTool;
     private final WorkloadStateUnfoldingTool workloadStateUnfoldingTool;
     private final SchedulingDiagnosticsUnfoldingTool schedulingDiagnosticsUnfoldingTool;
+    private final ConfigMapUnfoldingTool configMapUnfoldingTool;
 
     @Action(trigger = UserMessage.class, clearBlackboard = true)
     public void defaultChat(Conversation conversation, OperationContext operationContext, ActionContext actionContext) {
@@ -131,6 +133,7 @@ public class ChatAction {
                 .withTool(eventsUnfoldingTool)
                 .withTool(workloadStateUnfoldingTool)
                 .withTool(schedulingDiagnosticsUnfoldingTool)
+                .withTool(configMapUnfoldingTool)
                 .respond(conversation.getMessages());
         actionContext.sendAndSave(Objects.requireNonNull(assistantMessage));
     }

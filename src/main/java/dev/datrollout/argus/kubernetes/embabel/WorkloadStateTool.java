@@ -5,23 +5,7 @@ import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodStatus;
-import io.fabric8.kubernetes.api.model.apps.DaemonSet;
-import io.fabric8.kubernetes.api.model.apps.DaemonSetCondition;
-import io.fabric8.kubernetes.api.model.apps.DaemonSetSpec;
-import io.fabric8.kubernetes.api.model.apps.DaemonSetStatus;
-import io.fabric8.kubernetes.api.model.apps.Deployment;
-import io.fabric8.kubernetes.api.model.apps.DeploymentCondition;
-import io.fabric8.kubernetes.api.model.apps.DeploymentSpec;
-import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
-import io.fabric8.kubernetes.api.model.apps.DeploymentStrategy;
-import io.fabric8.kubernetes.api.model.apps.ReplicaSet;
-import io.fabric8.kubernetes.api.model.apps.RollingUpdateDeployment;
-import io.fabric8.kubernetes.api.model.apps.RollingUpdateStatefulSetStrategy;
-import io.fabric8.kubernetes.api.model.apps.StatefulSet;
-import io.fabric8.kubernetes.api.model.apps.StatefulSetCondition;
-import io.fabric8.kubernetes.api.model.apps.StatefulSetSpec;
-import io.fabric8.kubernetes.api.model.apps.StatefulSetStatus;
-import io.fabric8.kubernetes.api.model.apps.StatefulSetUpdateStrategy;
+import io.fabric8.kubernetes.api.model.apps.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import java.util.Collections;
 import java.util.Comparator;
@@ -164,16 +148,16 @@ public class WorkloadStateTool {
             sb.append(String.format(
                     "%-50s  %-9s  %-8s  %-8s  %-7s  %s%n",
                     "REPLICASET", "REVISION", "DESIRED", "READY", "ACTIVE", "POD-TEMPLATE-HASH"));
-            sb.append("-".repeat(120)).append("\n");
+            sb.repeat("-", 120).append("\n");
             for (ReplicaSet rs : owned) {
                 String revision = Optional.ofNullable(rs.getMetadata().getAnnotations())
                         .map(a -> a.get(REVISION_ANNOTATION))
                         .orElse("?");
                 int desiredRs = nz(Optional.ofNullable(rs.getSpec())
-                        .map(s -> s.getReplicas())
+                        .map(ReplicaSetSpec::getReplicas)
                         .orElse(null));
                 int readyRs = nz(Optional.ofNullable(rs.getStatus())
-                        .map(s -> s.getReadyReplicas())
+                        .map(ReplicaSetStatus::getReadyReplicas)
                         .orElse(null));
                 String hash = Optional.ofNullable(rs.getMetadata().getLabels())
                         .map(l -> l.get("pod-template-hash"))
