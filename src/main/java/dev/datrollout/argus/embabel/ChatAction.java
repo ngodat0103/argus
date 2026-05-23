@@ -13,6 +13,7 @@ import dev.datrollout.argus.kubernetes.embabel.KubernetesResourceUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.LogsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.NetworkingDebuggingUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.SchedulingDiagnosticsUnfoldingTool;
+import dev.datrollout.argus.kubernetes.embabel.SecretUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.WorkloadStateUnfoldingTool;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -120,6 +121,7 @@ public class ChatAction {
     private final WorkloadStateUnfoldingTool workloadStateUnfoldingTool;
     private final SchedulingDiagnosticsUnfoldingTool schedulingDiagnosticsUnfoldingTool;
     private final ConfigMapUnfoldingTool configMapUnfoldingTool;
+    private final SecretUnfoldingTool secretUnfoldingTool;
 
     @Action(trigger = UserMessage.class, clearBlackboard = true)
     public void defaultChat(Conversation conversation, OperationContext operationContext, ActionContext actionContext) {
@@ -134,6 +136,7 @@ public class ChatAction {
                 .withTool(workloadStateUnfoldingTool)
                 .withTool(schedulingDiagnosticsUnfoldingTool)
                 .withTool(configMapUnfoldingTool)
+                .withTool(secretUnfoldingTool)
                 .respond(conversation.getMessages());
         actionContext.sendAndSave(Objects.requireNonNull(assistantMessage));
     }
