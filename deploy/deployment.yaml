@@ -28,7 +28,7 @@ spec:
       serviceAccountName: argus
       containers:
         - name: argus
-          image: ghcr.io/ngodat0103/argus:0.1.4
+          image: ghcr.io/ngodat0103/argus:0.1.5
           imagePullPolicy: Always
           ports:
             - name: http

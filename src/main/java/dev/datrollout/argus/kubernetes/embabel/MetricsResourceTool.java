@@ -460,6 +460,33 @@ public class MetricsResourceTool {
         return sb.toString();
     }
 
+    @LlmTool(name = "availableRequestHeadroom", description = """
+                    Use when the user asks how much CPU/memory they can still request right now,
+                    e.g. "how much RAM can I request", "remaining schedulable CPU", "free request headroom".
+                    Returns per-node and cluster-total headroom based on the Kubernetes scheduler view:
+                    allocatable minus the sum of declared requests on Running/Pending pods.
+                    CPU in millicores, memory in MiB. No parameters required.
+                    """)
+    public String availableRequestHeadroom() {
+        List<Node> nodes = kubernetesClient.nodes().list().getItems();
+        if (nodes.isEmpty()) {
+            return "ERROR: no nodes found in the cluster.";
+        }
+
+        Map<String, long[]> scheduledByNode = computeScheduledRequestsByNode();
+        List<RequestHeadroomRow> rows = computeRequestHeadroomRows(nodes, scheduledByNode);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== AVAILABLE REQUEST HEADROOM ===\n");
+        sb.append("Basis: allocatable − sum of scheduled pod requests (scheduler view)\n\n");
+        appendRequestHeadroomTable(sb, rows);
+        sb.append("\n[NOTE]\n");
+        sb.append("  This is what the scheduler will accept as new pod requests.\n");
+        sb.append("  Pods with no requests (BestEffort) consume 0 scheduler headroom but can still OOM the node.\n");
+        sb.append("  Does not account for namespace ResourceQuota, affinity, taints, or topology spread.\n");
+        return sb.toString();
+    }
+
     @LlmTool(name = "estimatePodFitCount", description = """
                     Use this tool when the user asks how many pods of a given size can be allocated/scheduled
                     right now, e.g. "how many Java pods (500 MB each)", "how many pods with 2 CPU cores",
@@ -480,34 +507,8 @@ public class MetricsResourceTool {
             return "ERROR: no nodes found in the cluster.";
         }
 
-        // Compute scheduled (requested) CPU+memory already committed per node
-        // by summing all Running/Pending pod requests — this is what the scheduler sees.
-        Map<String, long[]> scheduledByNode = new HashMap<>(); // [cpuM, memBytes]
-        List<Pod> allPods = kubernetesClient.pods().inAnyNamespace().list().getItems();
-        for (Pod pod : allPods) {
-            String phase = Optional.ofNullable(pod.getStatus())
-                    .map(PodStatus::getPhase)
-                    .orElse("");
-            if ("Succeeded".equals(phase) || "Failed".equals(phase)) continue;
-            String nodeName =
-                    Optional.ofNullable(pod.getSpec()).map(PodSpec::getNodeName).orElse(null);
-            if (nodeName == null || nodeName.isBlank()) continue;
-
-            long cpuM = 0, memB = 0;
-            List<Container> containers = Optional.ofNullable(pod.getSpec())
-                    .map(PodSpec::getContainers)
-                    .orElse(Collections.emptyList());
-            for (Container c : containers) {
-                Map<String, Quantity> req = Optional.ofNullable(c.getResources())
-                        .map(ResourceRequirements::getRequests)
-                        .orElse(Collections.emptyMap());
-                cpuM += parseToMillicores(req.get("cpu"));
-                memB += parseToBytes(req.get("memory"));
-            }
-            long[] acc = scheduledByNode.computeIfAbsent(nodeName, k -> new long[] {0, 0});
-            acc[0] += cpuM;
-            acc[1] += memB;
-        }
+        Map<String, long[]> scheduledByNode = computeScheduledRequestsByNode();
+        List<RequestHeadroomRow> headroomRows = computeRequestHeadroomRows(nodes, scheduledByNode);
 
         // Fetch live usage (best-effort)
         Map<String, long[]> liveByNode = new HashMap<>();
@@ -554,18 +555,12 @@ public class MetricsResourceTool {
         long totalSchedFit = 0;
         long totalLiveFit = 0;
 
-        for (Node node : nodes) {
-            String nName = node.getMetadata().getName();
-            Map<String, Quantity> alloc = Optional.ofNullable(node.getStatus())
-                    .map(NodeStatus::getAllocatable)
-                    .orElse(Collections.emptyMap());
-
-            long allocCpuM = parseToMillicores(alloc.get("cpu"));
-            long allocMemB = parseToBytes(alloc.get("memory"));
-
-            long[] sched = scheduledByNode.getOrDefault(nName, new long[] {0, 0});
-            long freeCpuM = Math.max(0, allocCpuM - sched[0]);
-            long freeMemB = Math.max(0, allocMemB - sched[1]);
+        for (RequestHeadroomRow row : headroomRows) {
+            String nName = row.nodeName();
+            long allocCpuM = row.allocCpuM();
+            long allocMemB = row.allocMemMiB() * 1024L * 1024;
+            long freeCpuM = row.freeCpuM();
+            long freeMemB = row.freeMemMiB() * 1024L * 1024;
 
             long fitByCpu = podCpuMillicores > 0 ? freeCpuM / podCpuMillicores : Long.MAX_VALUE;
             long fitByMem = podMemBytes > 0 ? freeMemB / podMemBytes : Long.MAX_VALUE;
@@ -600,7 +595,7 @@ public class MetricsResourceTool {
                     "%-40s  %10d  %10d  %10s  %10s  %12s%s%s%n",
                     nName,
                     freeCpuM,
-                    bytesToMiB(freeMemB),
+                    row.freeMemMiB(),
                     podCpuMillicores > 0 ? fitByCpu : "  —",
                     podMemBytes > 0 ? fitByMem : "  —",
                     schedFit + " (" + binding + ")",
@@ -709,6 +704,125 @@ public class MetricsResourceTool {
         }
 
         return sb.toString();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Request headroom (scheduler view)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private record RequestHeadroomRow(
+            String nodeName,
+            long allocCpuM,
+            long reqCpuM,
+            long freeCpuM,
+            long allocMemMiB,
+            long reqMemMiB,
+            long freeMemMiB) {}
+
+    /**
+     * Sums declared CPU/memory requests of Running/Pending pods per node — what the scheduler sees.
+     * Returns map of nodeName → [cpuMillis, memBytes].
+     */
+    private Map<String, long[]> computeScheduledRequestsByNode() {
+        Map<String, long[]> scheduledByNode = new HashMap<>();
+        List<Pod> allPods = kubernetesClient.pods().inAnyNamespace().list().getItems();
+        for (Pod pod : allPods) {
+            String phase = Optional.ofNullable(pod.getStatus())
+                    .map(PodStatus::getPhase)
+                    .orElse("");
+            if ("Succeeded".equals(phase) || "Failed".equals(phase)) continue;
+            String nodeName =
+                    Optional.ofNullable(pod.getSpec()).map(PodSpec::getNodeName).orElse(null);
+            if (nodeName == null || nodeName.isBlank()) continue;
+
+            long cpuM = 0, memB = 0;
+            List<Container> containers = Optional.ofNullable(pod.getSpec())
+                    .map(PodSpec::getContainers)
+                    .orElse(Collections.emptyList());
+            for (Container c : containers) {
+                Map<String, Quantity> req = Optional.ofNullable(c.getResources())
+                        .map(ResourceRequirements::getRequests)
+                        .orElse(Collections.emptyMap());
+                cpuM += parseToMillicores(req.get("cpu"));
+                memB += parseToBytes(req.get("memory"));
+            }
+            long[] acc = scheduledByNode.computeIfAbsent(nodeName, k -> new long[] {0, 0});
+            acc[0] += cpuM;
+            acc[1] += memB;
+        }
+        return scheduledByNode;
+    }
+
+    private List<RequestHeadroomRow> computeRequestHeadroomRows(List<Node> nodes, Map<String, long[]> scheduledByNode) {
+        List<RequestHeadroomRow> rows = new ArrayList<>();
+        for (Node node : nodes) {
+            String nName = node.getMetadata().getName();
+            Map<String, Quantity> alloc = Optional.ofNullable(node.getStatus())
+                    .map(NodeStatus::getAllocatable)
+                    .orElse(Collections.emptyMap());
+
+            long allocCpuM = parseToMillicores(alloc.get("cpu"));
+            long allocMemB = parseToBytes(alloc.get("memory"));
+            long[] sched = scheduledByNode.getOrDefault(nName, new long[] {0, 0});
+            long reqCpuM = sched[0];
+            long reqMemB = sched[1];
+
+            rows.add(new RequestHeadroomRow(
+                    nName,
+                    allocCpuM,
+                    reqCpuM,
+                    Math.max(0, allocCpuM - reqCpuM),
+                    bytesToMiB(allocMemB),
+                    bytesToMiB(reqMemB),
+                    bytesToMiB(Math.max(0, allocMemB - reqMemB))));
+        }
+        return rows;
+    }
+
+    private void appendRequestHeadroomTable(StringBuilder sb, List<RequestHeadroomRow> rows) {
+        sb.append(String.format(
+                "%-40s  %12s  %12s  %12s  %14s  %14s  %14s%n",
+                "NODE",
+                "ALLOC-CPU(m)",
+                "REQ-CPU(m)",
+                "FREE-CPU(m)",
+                "ALLOC-MEM(MiB)",
+                "REQ-MEM(MiB)",
+                "FREE-MEM(MiB)"));
+        sb.repeat("-", 120).append("\n");
+
+        long totalAllocCpuM = 0, totalReqCpuM = 0, totalFreeCpuM = 0;
+        long totalAllocMemMiB = 0, totalReqMemMiB = 0, totalFreeMemMiB = 0;
+
+        for (RequestHeadroomRow row : rows) {
+            sb.append(String.format(
+                    "%-40s  %12d  %12d  %12d  %14d  %14d  %14d%n",
+                    row.nodeName(),
+                    row.allocCpuM(),
+                    row.reqCpuM(),
+                    row.freeCpuM(),
+                    row.allocMemMiB(),
+                    row.reqMemMiB(),
+                    row.freeMemMiB()));
+
+            totalAllocCpuM += row.allocCpuM();
+            totalReqCpuM += row.reqCpuM();
+            totalFreeCpuM += row.freeCpuM();
+            totalAllocMemMiB += row.allocMemMiB();
+            totalReqMemMiB += row.reqMemMiB();
+            totalFreeMemMiB += row.freeMemMiB();
+        }
+
+        sb.repeat("-", 120).append("\n");
+        sb.append(String.format(
+                "%-40s  %12d  %12d  %12d  %14d  %14d  %14d%n",
+                "CLUSTER TOTAL (" + rows.size() + " nodes)",
+                totalAllocCpuM,
+                totalReqCpuM,
+                totalFreeCpuM,
+                totalAllocMemMiB,
+                totalReqMemMiB,
+                totalFreeMemMiB));
     }
 
     // ──────────────────────────────────────────────────────────────────────────

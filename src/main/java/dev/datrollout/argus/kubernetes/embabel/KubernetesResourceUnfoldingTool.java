@@ -32,9 +32,11 @@ public class KubernetesResourceUnfoldingTool implements UnfoldingTool {
                 Invoke this when the operator reports OOMKilled pods, CrashLoopBackOff, \
                 high restart counts, pods stuck in Pending due to insufficient CPU or memory, \
                 node MemoryPressure or DiskPressure, namespace CPU/memory quota admission failures, \
-                or when you need a live CPU/memory consumption snapshot from the metrics-server. \
+                when asking how much CPU/memory can still be requested, or when you need a live \
+                CPU/memory consumption snapshot from the metrics-server. \
                 Exposes: inspectPodResourceHealth, inspectWorkloadResourceHealth, \
                 inspectNamespaceResourceConstraints, inspectNodeResourcePressure, \
+                clusterResourceSummary, availableRequestHeadroom, estimatePodFitCount, \
                 currentResourceUsage.\
                 """;
         return Definition.create(name, description, InputSchema.empty());
