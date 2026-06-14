@@ -10,19 +10,19 @@ import com.embabel.chat.Chatbot;
 import com.embabel.chat.ConversationFactory;
 import com.embabel.chat.agent.AgentProcessChatbot;
 import com.embabel.common.ai.model.OptionsConverter;
+import dev.datrollout.argus.ThreadConfiguration;
 import io.micrometer.observation.ObservationRegistry;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.deepseek.DeepSeekChatModel;
 import org.springframework.ai.deepseek.DeepSeekChatOptions;
 import org.springframework.ai.deepseek.api.DeepSeekApi;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -32,27 +32,28 @@ import org.springframework.web.client.RestClient;
 @ConditionalOnBean(ConversationFactory.class)
 public class DeepSeekChatbotConfiguration extends DeepSeekModelsConfig {
     private final DeepSeekProperties deepSeekProperties;
+    private final ExecutorService executorService;
 
     public DeepSeekChatbotConfiguration(
             @Value("DEEPSEEK_BASE_URL") String envBaseUrl,
             @Value("DEEPSEEK_API_KEY") String envApiKey,
             @NotNull DeepSeekProperties properties,
-            @NotNull ObjectProvider<ObservationRegistry> observationRegistry,
-            ApplicationContext applicationContext) {
+            @Qualifier(ThreadConfiguration.VIRTUAL_THREAD) ExecutorService executorService,
+            @NotNull ObjectProvider<ObservationRegistry> observationRegistry) {
         super(envBaseUrl, envApiKey, properties, observationRegistry);
         this.deepSeekProperties = properties;
+        this.executorService = executorService;
     }
 
     @Bean
     RestClient.Builder restClientBuilder() {
-        ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
         HttpClient httpClient = HttpClient.newBuilder()
                 .executor(executorService)
-                .connectTimeout(Duration.ofSeconds(5))
-                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(Duration.ofSeconds(30))
+                .version(HttpClient.Version.HTTP_2)
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(Duration.ofMinutes(5));
+        requestFactory.setReadTimeout(Duration.ofMinutes(3));
         return RestClient.builder().requestFactory(requestFactory);
     }
 
@@ -84,8 +85,7 @@ public class DeepSeekChatbotConfiguration extends DeepSeekModelsConfig {
                         .build())
                 .retryTemplate(deepSeekProperties.retryTemplate(DeepSeekApi.ChatModel.DEEPSEEK_REASONER.name()))
                 .build();
-        SpringAiLlmService springAiLlmService = getSpringAiLlmService(deepSeekChatModel);
-        return springAiLlmService;
+        return getSpringAiLlmService(deepSeekChatModel);
     }
 
     private static @NotNull SpringAiLlmService getSpringAiLlmService(DeepSeekChatModel deepSeekChatModel) {

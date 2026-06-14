@@ -3,6 +3,7 @@ package dev.datrollout.argus.telegram;
 import com.embabel.chat.ChatSession;
 import com.embabel.chat.Chatbot;
 import com.embabel.chat.UserMessage;
+import dev.datrollout.argus.ThreadConfiguration;
 import dev.datrollout.argus.embabel.persistence.ConversationJpaRepository;
 import dev.datrollout.argus.embabel.persistence.PostgresqlConversation;
 import dev.datrollout.argus.totp.ConfirmationHandler;
@@ -13,12 +14,13 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
 import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
-import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
@@ -28,7 +30,7 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 @ConditionalOnProperty(name = "TELEGRAM_TOKEN")
 @Slf4j
 @Component
-public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
+public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingUpdateConsumer {
     private static final ZoneOffset SESSION_ZONE = ZoneOffset.UTC;
     private static final DateTimeFormatter SESSION_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
     private static final String TELEGRAM_SESSION_PREFIX = "telegram";
@@ -40,17 +42,20 @@ public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingSi
     private final ConversationJpaRepository conversationJpaRepository;
     private final TotpSetupService totpSetupService;
     private final ConfirmationHandler confirmationHandler;
+    private final ExecutorService executorService;
 
     public EmbabelSpringPolling(
             TelegramClient telegramClient,
             Chatbot chatbot,
             ConversationJpaRepository conversationJpaRepository,
             TotpSetupService totpSetupService,
+            @Qualifier(ThreadConfiguration.VIRTUAL_THREAD) ExecutorService executorService,
             ConfirmationHandler confirmationHandler) {
         this.telegramClient = telegramClient;
         this.chatbot = chatbot;
         this.conversationJpaRepository = conversationJpaRepository;
         this.totpSetupService = totpSetupService;
+        this.executorService = executorService;
         this.confirmationHandler = confirmationHandler;
     }
 
@@ -64,8 +69,7 @@ public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingSi
         return this;
     }
 
-    @Override
-    public void consume(Update update) {
+    private void consume(Update update) {
         if (!update.hasMessage() || !update.getMessage().hasText()) {
             return;
         }
@@ -220,5 +224,10 @@ public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingSi
     private int sessionSequence(String conversationId) {
         String[] parts = conversationId.split(":");
         return Integer.parseInt(parts[3]);
+    }
+
+    @Override
+    public void consume(List<Update> updates) {
+        updates.forEach(update -> executorService.submit(() -> consume(update)));
     }
 }
