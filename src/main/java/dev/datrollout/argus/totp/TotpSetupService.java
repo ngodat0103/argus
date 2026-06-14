@@ -6,7 +6,6 @@ import dev.samstevens.totp.qr.ZxingPngQrGenerator;
 import dev.samstevens.totp.secret.DefaultSecretGenerator;
 import java.io.ByteArrayInputStream;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
@@ -32,17 +31,17 @@ public class TotpSetupService {
     private final TelegramUserRepository telegramUserRepository;
     private final TelegramClient telegramClient;
     private final ConfirmationHandler confirmationHandler;
-
-    @Value("${totp.issuer}")
-    private String issuer;
+    private final TotpProperties totpProperties;
 
     public TotpSetupService(
             TelegramUserRepository telegramUserRepository,
             TelegramClient telegramClient,
-            ConfirmationHandler confirmationHandler) {
+            ConfirmationHandler confirmationHandler,
+            TotpProperties totpProperties) {
         this.telegramUserRepository = telegramUserRepository;
         this.telegramClient = telegramClient;
         this.confirmationHandler = confirmationHandler;
+        this.totpProperties = totpProperties;
     }
 
     /**
@@ -62,14 +61,14 @@ public class TotpSetupService {
             telegramUserRepository.save(user);
             log.info("TOTP secret (re)generated for chat {}", chatId);
 
-            // 2. Build otpauth:// QR code
+            // 2. Build otpauth:// QR code using configuration values
             QrData qrData = new QrData.Builder()
                     .label(label)
                     .secret(secret)
-                    .issuer(issuer)
+                    .issuer(totpProperties.getIssuer())
                     .algorithm(HashingAlgorithm.SHA1)
-                    .digits(6)
-                    .period(30)
+                    .digits(totpProperties.getDigits())
+                    .period(totpProperties.getPeriod())
                     .build();
 
             byte[] qrImage = new ZxingPngQrGenerator().generate(qrData);
@@ -88,7 +87,7 @@ public class TotpSetupService {
                     .parseMode("MarkdownV2")
                     .build());
 
-            // Immediately test the OTP flow: prompt the user to verify their new code
+            // 4. Immediately prompt the user to verify their new code via ForceReply
             confirmationHandler.storePendingOp(
                     chatId, new PendingOperation("totp-verification-test", "setup-verification", false));
         } catch (TelegramApiException e) {

@@ -42,6 +42,12 @@ repositories {
         url = uri("https://repo.spring.io/milestone")
     }
 }
+configurations.all {
+    resolutionStrategy {
+        force("io.modelcontextprotocol.sdk:mcp:0.17.2")
+    }
+}
+
 
 dependencies {
     // Embabel
