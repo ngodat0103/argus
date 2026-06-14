@@ -1,11 +1,11 @@
 package dev.datrollout.argus.totp;
 
 import java.util.concurrent.ConcurrentHashMap;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -16,7 +16,8 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
  * <ol>
  *   <li>An agent tool registers a high-risk {@link PendingOperation} via
  *       {@link #storePendingOp(long, PendingOperation)}.
- *   <li>The bot prompts the user for a 6-digit authenticator code.
+ *   <li>The bot sends a {@link ForceReplyKeyboard} prompt — Telegram UI automatically opens the
+ *       reply input box, visually forcing the user to type their OTP.
  *   <li>When the user sends a {@code \d{6}} message the bot routes it to
  *       {@link #handleOtpInput(Message)}.
  *   <li>On success the operation is executed and the pending entry is cleared.
@@ -29,23 +30,39 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
  * multiple bot instances in production.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ConfirmationHandler {
 
     private final TelegramUserRepository telegramUserRepository;
     private final TotpVerifyService totpVerifyService;
     private final TelegramClient telegramClient;
+    private final TotpProperties totpProperties;
 
     /** In-memory store of pending operations keyed by Telegram chat ID. */
     private final ConcurrentHashMap<Long, PendingOperation> pendingOps = new ConcurrentHashMap<>();
+
+    public ConfirmationHandler(
+            TelegramUserRepository telegramUserRepository,
+            TotpVerifyService totpVerifyService,
+            TelegramClient telegramClient,
+            TotpProperties totpProperties) {
+        this.telegramUserRepository = telegramUserRepository;
+        this.totpVerifyService = totpVerifyService;
+        this.telegramClient = telegramClient;
+        this.totpProperties = totpProperties;
+    }
 
     // -------------------------------------------------------------------------
     // Public API
     // -------------------------------------------------------------------------
 
     /**
-     * Stores a pending operation for the given chat and sends the TOTP prompt.
+     * Stores a pending operation for the given chat and sends a {@link ForceReplyKeyboard} OTP
+     * prompt.
+     *
+     * <p>The {@code ForceReply} markup causes Telegram to automatically open the reply input box
+     * with a labelled placeholder, visually directing the user to enter their OTP without any
+     * additional taps.
      *
      * <p>Called by agent tools after the user has confirmed via an inline button.
      *
@@ -55,9 +72,7 @@ public class ConfirmationHandler {
     public void storePendingOp(long chatId, PendingOperation op) {
         pendingOps.put(chatId, op);
         log.info("Pending operation stored for chat {}: type={}, highRisk={}", chatId, op.getType(), op.isHighRisk());
-        sendText(
-                chatId,
-                "✅ QR code scanned\\? Enter the 6\\-digit code from your authenticator app to verify the setup:");
+        sendOtpPrompt(chatId);
     }
 
     /**
@@ -130,6 +145,38 @@ public class ConfirmationHandler {
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Sends the OTP prompt using {@link ForceReplyKeyboard}.
+     *
+     * <p>Telegram displays a reply box pre-labelled with {@code inputFieldPlaceholder} text,
+     * giving users an explicit, visually-guided place to type their 6-digit code.
+     *
+     * <p><strong>Note:</strong> {@code selective=false} is intentional — in private chats
+     * selective has no effect, and {@code false} guarantees the ForceReply UI always appears.
+     * Plain text (no {@code parseMode}) is used to avoid MarkdownV2 parse errors.
+     */
+    private void sendOtpPrompt(long chatId) {
+        try {
+            ForceReplyKeyboard forceReply = ForceReplyKeyboard.builder()
+                    // Placeholder text shown inside the Telegram reply input box
+                    .inputFieldPlaceholder("Enter 6-digit code…")
+                    // selective=false → ForceReply always shows in private chats
+                    .forceReply(true)
+                    .selective(false)
+                    .build();
+            telegramClient.execute(SendMessage.builder()
+                    .chatId(chatId)
+                    .text(totpProperties.getOtpPrompt())
+                    .replyMarkup(forceReply)
+                    .build());
+
+            log.info("OTP ForceReply prompt sent to chat {}", chatId);
+        } catch (TelegramApiException e) {
+            // Escalate to ERROR — a silently-missing OTP prompt leaves the user stuck
+            log.error("Failed to send OTP ForceReply prompt to chat {}", chatId, e);
+        }
+    }
 
     /**
      * Executes the confirmed operation.
