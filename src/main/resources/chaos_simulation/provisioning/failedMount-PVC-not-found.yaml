@@ -1,0 +1,49 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-pvc
+  namespace: horizon
+spec:
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: horizon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      volumes:
+        - name: nginx-vol
+          persistentVolumeClaim:
+            claimName: nginxx-pvc
+      containers:
+        - name: nginx
+          image: nginx
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - mountPath: "/data"
+              name: nginx-vol
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "10Mi"
+            limits:
+              cpu: "50m"
+              memory: "50Mi"

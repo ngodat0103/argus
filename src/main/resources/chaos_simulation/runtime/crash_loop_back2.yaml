@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-svc
+  namespace: horizon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-svc
+  template:
+    metadata:
+      labels:
+        app: auth-svc
+    spec:
+      containers:
+        - name: aerith
+          image: ghcr.io/ngodat0103/yamp/auth-svc:0.0.1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8001
+          resources:
+            limits:
+              memory: "512Mi"

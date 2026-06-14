@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: we-screw-up
+  namespace: dev
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: vks.vngcloud.vn/mgmt-zone
+                operator: In
+                values:
+                  - hcm04b
+  containers:
+    - name: busybox
+      image: busybox:1.36
+      command: ["sh", "-c", "echo NodeAffinityViolation test; sleep 3600"]

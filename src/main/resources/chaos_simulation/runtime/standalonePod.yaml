@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: crash-loop-demo
+  namespace: horizon
+  labels:
+    purpose: demonstration
+spec:
+  containers:
+    - name: fail-bot
+      image: busybox
+      command: ["/bin/sh", "-c"]
+      args:
+        - "echo 'I am about to crash...'; sleep 5; exit 1"
+  restartPolicy: Always

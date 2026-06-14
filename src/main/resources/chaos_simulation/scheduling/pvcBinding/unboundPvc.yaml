@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pending-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "non-existent-storage-class-xyz"
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-unbound-pvc
+  namespace: default
+  labels:
+    app: test-fail
+spec:
+  containers:
+    - name: nginx
+      image: nginx:alpine
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: my-volume
+  volumes:
+    - name: my-volume
+      persistentVolumeClaim:
+        claimName: pending-pvc

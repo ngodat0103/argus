@@ -34,10 +34,10 @@ public class ThreadConfiguration {
         int inferredThreads = Math.max(1, availableProcessors - 1);
         ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(
                 inferredThreads,
-                inferredThreads * 3,
+                inferredThreads,
                 60,
                 TimeUnit.SECONDS,
-                new java.util.concurrent.LinkedBlockingQueue<>(inferredThreads * 3));
+                new java.util.concurrent.PriorityBlockingQueue<>(1000));
         threadPoolExecutor.allowCoreThreadTimeOut(true);
         threadPoolExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         ThreadFactory threadFactory = Thread.ofPlatform()

@@ -1,0 +1,174 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "count": 21,
+            "eventTime": null,
+            "firstTimestamp": "2025-12-11T02:37:58Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{hades}",
+                "kind": "Pod",
+                "name": "user-svc-86b56bcd69-96l7f",
+                "namespace": "horizon",
+                "resourceVersion": "26085174",
+                "uid": "6cbefca8-35ee-4a69-9fa9-a2ad65a530db"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2025-12-11T02:42:48Z",
+            "message": "Back-off restarting failed container hades in pod user-svc-86b56bcd69-96l7f_horizon(6cbefca8-35ee-4a69-9fa9-a2ad65a530db)",
+            "metadata": {
+                "creationTimestamp": "2025-12-11T02:37:58Z",
+                "name": "user-svc-86b56bcd69-96l7f.188008c0dd5b088a",
+                "namespace": "horizon",
+                "resourceVersion": "26087004",
+                "uid": "8ac7690d-0eff-433a-8841-b6f1ed988a6e"
+            },
+            "reason": "BackOff",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "vks-devops-test-cluster-nodegroup-cpu-7dc4d",
+            "source": {
+                "component": "kubelet",
+                "host": "vks-devops-test-cluster-nodegroup-cpu-7dc4d"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 15,
+            "eventTime": null,
+            "firstTimestamp": "2025-12-11T02:38:26Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{hades}",
+                "kind": "Pod",
+                "name": "user-svc-86b56bcd69-frkx5",
+                "namespace": "horizon",
+                "resourceVersion": "26085176",
+                "uid": "c3336da5-1346-482e-8eda-bfe6cadf23f6"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2025-12-11T02:42:52Z",
+            "message": "Back-off restarting failed container hades in pod user-svc-86b56bcd69-frkx5_horizon(c3336da5-1346-482e-8eda-bfe6cadf23f6)",
+            "metadata": {
+                "creationTimestamp": "2025-12-11T02:38:26Z",
+                "name": "user-svc-86b56bcd69-frkx5.188008c77cfd14bd",
+                "namespace": "horizon",
+                "resourceVersion": "26087029",
+                "uid": "17af55c1-1cc6-45e8-8648-cef17a9eb5bd"
+            },
+            "reason": "BackOff",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "vks-devops-test-cluster-nodegroup-gpu-63b76",
+            "source": {
+                "component": "kubelet",
+                "host": "vks-devops-test-cluster-nodegroup-gpu-63b76"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 14,
+            "eventTime": null,
+            "firstTimestamp": "2025-12-11T02:38:27Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{hades}",
+                "kind": "Pod",
+                "name": "user-svc-86b56bcd69-mpcnb",
+                "namespace": "horizon",
+                "resourceVersion": "26085180",
+                "uid": "e817dcf4-acb7-4d0b-9f86-e08aa7357e9c"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2025-12-11T02:42:46Z",
+            "message": "Back-off restarting failed container hades in pod user-svc-86b56bcd69-mpcnb_horizon(e817dcf4-acb7-4d0b-9f86-e08aa7357e9c)",
+            "metadata": {
+                "creationTimestamp": "2025-12-11T02:38:27Z",
+                "name": "user-svc-86b56bcd69-mpcnb.188008c7b96a996e",
+                "namespace": "horizon",
+                "resourceVersion": "26086996",
+                "uid": "901f42bc-cf55-4b1f-a1f7-516a0382ec22"
+            },
+            "reason": "BackOff",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "vks-devops-test-cluster-nodegroup-gpu-63b76",
+            "source": {
+                "component": "kubelet",
+                "host": "vks-devops-test-cluster-nodegroup-gpu-63b76"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 15,
+            "eventTime": null,
+            "firstTimestamp": "2025-12-11T02:38:24Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{hades}",
+                "kind": "Pod",
+                "name": "user-svc-86b56bcd69-q8dzv",
+                "namespace": "horizon",
+                "resourceVersion": "26085172",
+                "uid": "8c2a64a0-1d49-4da6-b6ed-4b90cc83f4ed"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2025-12-11T02:42:48Z",
+            "message": "Back-off restarting failed container hades in pod user-svc-86b56bcd69-q8dzv_horizon(8c2a64a0-1d49-4da6-b6ed-4b90cc83f4ed)",
+            "metadata": {
+                "creationTimestamp": "2025-12-11T02:38:24Z",
+                "name": "user-svc-86b56bcd69-q8dzv.188008c704394cbb",
+                "namespace": "horizon",
+                "resourceVersion": "26087002",
+                "uid": "514d3b10-c70b-4093-ae95-cb01ef36ca49"
+            },
+            "reason": "BackOff",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "vks-devops-test-cluster-nodegroup-gpu-63b76",
+            "source": {
+                "component": "kubelet",
+                "host": "vks-devops-test-cluster-nodegroup-gpu-63b76"
+            },
+            "type": "Warning"
+        },
+        {
+            "apiVersion": "v1",
+            "count": 20,
+            "eventTime": null,
+            "firstTimestamp": "2025-12-11T02:37:59Z",
+            "involvedObject": {
+                "apiVersion": "v1",
+                "fieldPath": "spec.containers{hades}",
+                "kind": "Pod",
+                "name": "user-svc-86b56bcd69-qp5vc",
+                "namespace": "horizon",
+                "resourceVersion": "26085178",
+                "uid": "133ec8e9-7773-4d9d-b93b-390369b6dfb2"
+            },
+            "kind": "Event",
+            "lastTimestamp": "2025-12-11T02:42:43Z",
+            "message": "Back-off restarting failed container hades in pod user-svc-86b56bcd69-qp5vc_horizon(133ec8e9-7773-4d9d-b93b-390369b6dfb2)",
+            "metadata": {
+                "creationTimestamp": "2025-12-11T02:37:59Z",
+                "name": "user-svc-86b56bcd69-qp5vc.188008c1194207cb",
+                "namespace": "horizon",
+                "resourceVersion": "26086975",
+                "uid": "2dffbc6f-4714-4907-85bf-e50a0d1f1a3b"
+            },
+            "reason": "BackOff",
+            "reportingComponent": "kubelet",
+            "reportingInstance": "vks-devops-test-cluster-nodegroup-cpu-7dc4d",
+            "source": {
+                "component": "kubelet",
+                "host": "vks-devops-test-cluster-nodegroup-cpu-7dc4d"
+            },
+            "type": "Warning"
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

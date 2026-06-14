@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hephaestus
+  namespace: dev
+  labels:
+    app: hephaestus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hephaestus
+  template:
+    metadata:
+      labels:
+        app: hephaestus
+    spec:
+      containers:
+        - name: hephaestus
+          image: ngodat0103/ops-my-pod-failed:python
+          imagePullPolicy: Always
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+          ports:
+            - containerPort: 2509
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 2509
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 10
+            failureThreshold: 5
+          resources:
+            requests:
+              memory: "50Mi"
+              cpu: "100m"
+            limits:
+              memory: "100Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hephaestus
+  namespace: dev
+spec:
+  selector:
+    app: hephaestus
+  ports:
+    - protocol: TCP
+      port: 2509
+      targetPort: 2509
+  type: ClusterIP

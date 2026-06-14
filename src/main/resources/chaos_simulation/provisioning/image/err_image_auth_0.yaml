@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gaia
+  namespace: horizon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gaia
+  template:
+    metadata:
+      labels:
+        app: gaia
+    spec:
+      containers:
+        - name: gaia
+          image: ngodat0103/gaia:dev-latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8002
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

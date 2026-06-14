@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gaia-chaos-test
+  namespace: horizon
+  labels:
+    app: gaia-test
+spec:
+  # FAIL 1: Node Selector Mismatch
+  # It looks for a label that definitely doesn't exist on your nodes.
+  nodeSelector:
+    hardware-type: quantum-computer-v1
+
+  # FAIL 2: Affinity Conflict
+  # It requires running on a node with a specific hostname that doesn't exist.
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - "non-existent-node-xyz"
+
+  containers:
+  - name: pause
+    image: k8s.gcr.io/pause:3.1
+    # FAIL 3: Insufficient Resources
+    # Requests an absurd amount of CPU that no single node can provide.
+    resources:
+      requests:
+        cpu: "10000" # Requests 10,000 CPU cores
+        memory: "512Gi"
+    
+    # FAIL 4: Host Port Conflict (Optional, depends on your network)
+    # Tries to bind to a protected/common port on the host
+    ports:
+    - containerPort: 80
+      hostPort: 80

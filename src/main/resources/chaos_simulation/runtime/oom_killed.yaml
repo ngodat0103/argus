@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-svc
+  namespace: horizon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-svc
+  template:
+    metadata:
+      labels:
+        app: gateway-svc
+    spec:
+      containers:
+        - name: gateway-svc
+          image: ghcr.io/ngodat0103/yamp/gateway-svc:0.0.1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              memory: "150Mi"
+            limits:
+              memory: "150Mi"

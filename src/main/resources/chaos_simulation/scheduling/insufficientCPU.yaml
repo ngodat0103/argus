@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hades
+  namespace: horizon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hades
+  template:
+    metadata:
+      labels:
+        app: hades
+    spec:
+      containers:
+        - name: hades
+          image: ghcr.io/ngodat0103/yamp/user-svc:0.0.1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8002
+          resources:
+            requests:
+              cpu: "100"
