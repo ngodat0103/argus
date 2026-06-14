@@ -21,11 +21,10 @@ public class KubernetesConfiguration {
         ThreadFactory threadFactory =
                 Thread.ofPlatform().name("kubernetesClient", 0).factory();
         ExecutorService executorService = Executors.newFixedThreadPool(10, threadFactory);
-        KubernetesClient kubernetesClient = new KubernetesClientBuilder()
+        return new KubernetesClientBuilder()
                 .withConfig(Config.autoConfigure("kubernetes-super-admin@cluster.local"))
                 .withTaskExecutor(executorService)
                 .build();
-        return kubernetesClient;
     }
 
     @Bean

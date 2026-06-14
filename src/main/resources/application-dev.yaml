@@ -8,3 +8,5 @@ spring:
     url: jdbc:postgresql://192.168.29.2:5432/argus
     username: argus
     password: argus
+totp:
+  issuer: "[dev] Argus Telegram Agent"
