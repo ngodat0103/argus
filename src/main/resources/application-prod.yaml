@@ -12,3 +12,5 @@ discovery:
 logging:
   level:
     root: info
+totp:
+  issuer: "Argus Telegram Agent"

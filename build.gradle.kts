@@ -1,18 +1,18 @@
 plugins {
     java
-    id("org.springframework.boot") version "3.5.14"
+    id("org.springframework.boot") version "3.5.15"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.sonarqube") version "7.3.0.8198"
     id("com.diffplug.spotless") version "8.5.1"
 }
 
 group = "dev.datrollout"
-version = "0.0.1-SNAPSHOT"
+version = "0.2.0"
 description = "argus"
 val embabelAgentVersion = "0.4.0"
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(26)
     }
 }
 sonar {
@@ -51,6 +51,9 @@ dependencies {
     // chat
     implementation("org.telegram:telegrambots-springboot-longpolling-starter:9.6.0")
     implementation("org.telegram:telegrambots-client:9.5.0")
+
+    // TOTP two-factor authentication
+    implementation("dev.samstevens.totp:totp:1.7.1")
 
 
     // Persistence

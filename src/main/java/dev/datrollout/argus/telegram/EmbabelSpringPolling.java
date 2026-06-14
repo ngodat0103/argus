@@ -5,6 +5,8 @@ import com.embabel.chat.Chatbot;
 import com.embabel.chat.UserMessage;
 import dev.datrollout.argus.embabel.persistence.ConversationJpaRepository;
 import dev.datrollout.argus.embabel.persistence.PostgresqlConversation;
+import dev.datrollout.argus.totp.ConfirmationHandler;
+import dev.datrollout.argus.totp.TotpSetupService;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -14,7 +16,6 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
 import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
@@ -32,15 +33,25 @@ public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingSi
     private static final DateTimeFormatter SESSION_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
     private static final String TELEGRAM_SESSION_PREFIX = "telegram";
     private static final String CLEAR_COMMAND = "/clear";
+    private static final String SETUP_2FA_COMMAND = "/setup";
 
     private final TelegramClient telegramClient;
     private final Chatbot chatbot;
     private final ConversationJpaRepository conversationJpaRepository;
+    private final TotpSetupService totpSetupService;
+    private final ConfirmationHandler confirmationHandler;
 
-    public EmbabelSpringPolling(Chatbot chatbot, ConversationJpaRepository conversationJpaRepository) {
-        this.telegramClient = new OkHttpTelegramClient(this.getBotToken());
+    public EmbabelSpringPolling(
+            TelegramClient telegramClient,
+            Chatbot chatbot,
+            ConversationJpaRepository conversationJpaRepository,
+            TotpSetupService totpSetupService,
+            ConfirmationHandler confirmationHandler) {
+        this.telegramClient = telegramClient;
         this.chatbot = chatbot;
         this.conversationJpaRepository = conversationJpaRepository;
+        this.totpSetupService = totpSetupService;
+        this.confirmationHandler = confirmationHandler;
     }
 
     @Override
@@ -60,13 +71,30 @@ public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingSi
         }
 
         Message userMessage = update.getMessage();
-        String chatPlatformId = userMessage.getChatId().toString();
-        if (userMessage.isCommand() && isClearCommand(userMessage.getText())) {
+        long chatId = userMessage.getChatId();
+        String chatPlatformId = Long.toString(chatId);
+        String text = userMessage.getText().trim();
+
+        // 1. Route 6-digit OTP input to the confirmation handler (highest priority)
+        if (text.matches("\\d{6}")) {
+            confirmationHandler.handleOtpInput(userMessage);
+            return;
+        }
+
+        // 2. Handle /setup-two-factor-authentication command
+        if (isSetup2FaCommand(text)) {
+            String label = resolveUserLabel(userMessage);
+            totpSetupService.handleSetup(chatId, label);
+            return;
+        }
+        // 3. Handle /clear command
+        if (userMessage.isCommand() && isClearCommand(text)) {
             clearCurrentSession(chatPlatformId);
             sendText(chatPlatformId, "Session cleared. Send a message to start a new session.");
             return;
         }
 
+        // 4. Normal agent commands
         TelegramUser telegramUser = new TelegramUser(userMessage.getFrom());
         TelegramOutputChannel telegramOutputChannel = new TelegramOutputChannel(userMessage, this.telegramClient);
         String sessionId = resolveSessionId(chatPlatformId);
@@ -140,6 +168,33 @@ public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingSi
         }
         String command = text.split("\\s+", 2)[0];
         return CLEAR_COMMAND.equals(command) || command.startsWith(CLEAR_COMMAND + "@");
+    }
+
+    private static boolean isSetup2FaCommand(String text) {
+        if (text == null) {
+            return false;
+        }
+        String command = text.split("\\s+", 2)[0];
+        return SETUP_2FA_COMMAND.equals(command) || command.startsWith(SETUP_2FA_COMMAND + "@");
+    }
+
+    /**
+     * Resolves a human-readable label for the TOTP entry in the authenticator app.
+     * Prefers Telegram username; falls back to first name + last name.
+     */
+    private static String resolveUserLabel(Message message) {
+        var from = message.getFrom();
+        if (from == null) {
+            return "argus-user";
+        }
+        if (from.getUserName() != null && !from.getUserName().isBlank()) {
+            return from.getUserName();
+        }
+        String name = from.getFirstName() != null ? from.getFirstName() : "";
+        if (from.getLastName() != null && !from.getLastName().isBlank()) {
+            name = name + " " + from.getLastName();
+        }
+        return name.isBlank() ? "argus-user" : name.trim();
     }
 
     private static String sessionId(String chatPlatformId, LocalDate sessionDate, int sequence) {

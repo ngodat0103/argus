@@ -33,12 +33,12 @@ embabel:
         deepseek:
           api-key: ${DEEPSEEK_API_KEY}
           base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
-          max-attempts: 20
+          max-attempts: 5
       process-repository:
         window-size: 50
       llm-operations:
         data-binding:
-          max-attempts: 20
+          max-attempts: 5
           fixed-backoff-millis: 5
         prompts:
           default-timeout: 300s
@@ -53,14 +53,3 @@ management:
     web:
       exposure:
         include: health,info,prometheus,metrics
-discovery:
-  namespaces:
-    - kube-prometheus-stack
-    - loki
-  probe:
-    timeout: 3s
-    retry-count: 2
-  cache:
-    ttl: 5m
-  port-forward:
-    enabled: true
