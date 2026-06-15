@@ -33,11 +33,7 @@ public class ThreadConfiguration {
         int availableProcessors = Runtime.getRuntime().availableProcessors();
         int inferredThreads = Math.max(1, availableProcessors - 1);
         ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(
-                inferredThreads,
-                inferredThreads,
-                60,
-                TimeUnit.SECONDS,
-                new java.util.concurrent.PriorityBlockingQueue<>(1000));
+                inferredThreads, inferredThreads, 60, TimeUnit.SECONDS, new LinkedBlockingQueue<>(1000));
         threadPoolExecutor.allowCoreThreadTimeOut(true);
         threadPoolExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         ThreadFactory threadFactory = Thread.ofPlatform()
@@ -46,7 +42,6 @@ public class ThreadConfiguration {
                 .factory();
         threadPoolExecutor.setThreadFactory(threadFactory);
         threadPoolExecutor.prestartAllCoreThreads();
-        threadPoolExecutor.execute(() -> log.info("Worker thread pool started"));
         return threadPoolExecutor;
     }
 

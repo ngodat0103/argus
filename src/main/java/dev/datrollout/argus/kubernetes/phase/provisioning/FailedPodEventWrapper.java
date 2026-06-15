@@ -1,4 +1,4 @@
-package dev.datrollout.argus.kubernetes.detection.phase.provisioning;
+package dev.datrollout.argus.kubernetes.phase.provisioning;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,4 +9,4 @@ import lombok.extern.slf4j.Slf4j;
 @SuperBuilder
 @Slf4j
 @AllArgsConstructor
-public class FailedAttachVolumeEventWrapper extends ProvisioningEventWrapper {}
+public class FailedPodEventWrapper extends ProvisioningEventWrapper {}

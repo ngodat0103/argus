@@ -1,57 +1,31 @@
-package dev.datrollout.argus.kubernetes.detection.watcher;
+package dev.datrollout.argus.kubernetes.detector;
 
 import io.fabric8.kubernetes.api.model.ContainerStatus;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.Watch;
-import io.fabric8.kubernetes.client.Watcher;
-import io.fabric8.kubernetes.client.WatcherException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class OomKillWatcher implements SmartLifecycle {
+public class OomKilledDetector implements SmartLifecycle {
 
     private final KubernetesClient kubernetesClient;
-    private final ApplicationEventPublisher publisher;
-
-    // track last-seen restartCount per container to avoid duplicate fires
-    private final ConcurrentHashMap<String, Integer> restartCounts = new ConcurrentHashMap<>();
-
-    private Watch watch;
+    private final MemoryContainerWatcher memoryContainerWatcher;
+    private Watch containerWatch;
+    private Watch kubeletWatch;
     private volatile boolean running = false;
 
     @Override
     public void start() {
-        watch = kubernetesClient.pods().inAnyNamespace().watch(new Watcher<>() {
-            @Override
-            public boolean reconnecting() {
-                return true;
-            }
-
-            @Override
-            public void eventReceived(Action action, Pod pod) {
-                if (action != Action.MODIFIED) return;
-                inspect(pod);
-            }
-
-            @Override
-            public void onClose(WatcherException cause) {
-                if (cause != null) {
-                    // Fabric8 auto-reconnects on HTTP 410 Gone — this fires on
-                    // non-recoverable errors only. Log + alert, don't re-register here.
-                }
-            }
-        });
+        this.containerWatch = kubernetesClient.pods().inAnyNamespace().watch(this.memoryContainerWatcher);
         log.info("Started OomKillWatcher");
         running = true;
     }
@@ -69,7 +43,7 @@ public class OomKillWatcher implements SmartLifecycle {
 
     @Override
     public void stop() {
-        if (watch != null) watch.close();
+        if (containerWatch != null) containerWatch.close();
         running = false;
     }
 

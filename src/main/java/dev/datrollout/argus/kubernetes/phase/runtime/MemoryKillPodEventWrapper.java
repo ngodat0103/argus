@@ -1,10 +1,9 @@
-package dev.datrollout.argus.kubernetes.detection.phase.runtime;
+package dev.datrollout.argus.kubernetes.phase.runtime;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerStatus;
 import io.fabric8.kubernetes.api.model.Quantity;
 import java.util.Map;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
@@ -13,8 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @SuperBuilder
-@AllArgsConstructor
-public class OOMPodEventWrapper extends CrashLoopBackEventWrapper {
+public class MemoryKillPodEventWrapper extends CrashLoopBackEventWrapper {
     public String getOOMExplanation() {
         String containerName = getFailedContainerName();
         if (containerName == null || failedPod == null) {

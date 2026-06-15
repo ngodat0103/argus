@@ -1,4 +1,4 @@
-package dev.datrollout.argus.kubernetes.detection.phase.provisioning;
+package dev.datrollout.argus.kubernetes.phase.provisioning;
 
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;

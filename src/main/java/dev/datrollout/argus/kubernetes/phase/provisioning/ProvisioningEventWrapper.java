@@ -1,22 +1,16 @@
-package dev.datrollout.argus.kubernetes.detection.phase.runtime;
+package dev.datrollout.argus.kubernetes.phase.provisioning;
 
-import dev.datrollout.argus.kubernetes.detection.phase.K8sEventWrapper;
-import java.util.List;
+import dev.datrollout.argus.kubernetes.phase.K8sEventWrapper;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
-@Getter
 @SuperBuilder
 @Slf4j
-@NoArgsConstructor
 @AllArgsConstructor
-public class LoggablePodEventWrapper extends K8sEventWrapper {
-    private List<String> lineLogs;
+public abstract class ProvisioningEventWrapper extends K8sEventWrapper {
     private static final Pattern CONTAINER_PATTERN = Pattern.compile("spec\\.(init)?[cC]ontainers\\{([^}]+)}");
     private static final Pattern FAILED_CONTAINER_PATTERN = Pattern.compile("failed container (.+)");
     private static final Pattern GENERIC_CONTAINER_PATTERN = Pattern.compile("container[:\\s]+([\\w-]+)");
@@ -24,28 +18,28 @@ public class LoggablePodEventWrapper extends K8sEventWrapper {
     public String getFailedContainerName() {
         try {
             // Validate event object
-            if (this.event == null) {
+            if (this.associatedEvent == null) {
                 log.warn("Event object is null");
                 return null;
             }
 
-            if (this.event.getInvolvedObject() == null) {
+            if (this.associatedEvent.getInvolvedObject() == null) {
                 log.warn(
                         "InvolvedObject is null for event: {}",
-                        this.event.getMetadata() != null
-                                ? this.event.getMetadata().getName()
+                        this.associatedEvent.getMetadata() != null
+                                ? this.associatedEvent.getMetadata().getName()
                                 : "unknown");
                 return null;
             }
 
-            String fieldPath = this.event.getInvolvedObject().getFieldPath();
+            String fieldPath = this.associatedEvent.getInvolvedObject().getFieldPath();
 
             // Check if fieldPath is empty
             if (fieldPath == null || fieldPath.trim().isEmpty()) {
                 log.debug(
                         "FieldPath is null or empty for event: {}",
-                        this.event.getMetadata() != null
-                                ? this.event.getMetadata().getName()
+                        this.associatedEvent.getMetadata() != null
+                                ? this.associatedEvent.getMetadata().getName()
                                 : "unknown");
                 return null;
             }
@@ -68,15 +62,17 @@ public class LoggablePodEventWrapper extends K8sEventWrapper {
             log.warn(
                     "Could not extract container name from fieldPath: {}. Event: {}",
                     fieldPath,
-                    this.event.getMetadata() != null ? this.event.getMetadata().getName() : "unknown");
+                    this.associatedEvent.getMetadata() != null
+                            ? this.associatedEvent.getMetadata().getName()
+                            : "unknown");
 
             return null;
 
         } catch (Exception e) {
             log.error(
                     "Unexpected error while extracting container name from event: {}",
-                    this.event != null && this.event.getMetadata() != null
-                            ? this.event.getMetadata().getName()
+                    this.associatedEvent != null && this.associatedEvent.getMetadata() != null
+                            ? this.associatedEvent.getMetadata().getName()
                             : "unknown",
                     e);
             return null;
@@ -108,10 +104,10 @@ public class LoggablePodEventWrapper extends K8sEventWrapper {
         StringBuilder details = new StringBuilder();
         details.append("Container: ").append(containerName);
 
-        if (this.event != null && this.event.getInvolvedObject() != null) {
-            String kind = this.event.getInvolvedObject().getKind();
-            String name = this.event.getInvolvedObject().getName();
-            String namespace = this.event.getInvolvedObject().getNamespace();
+        if (this.associatedEvent != null && this.associatedEvent.getInvolvedObject() != null) {
+            String kind = this.associatedEvent.getInvolvedObject().getKind();
+            String name = this.associatedEvent.getInvolvedObject().getName();
+            String namespace = this.associatedEvent.getInvolvedObject().getNamespace();
 
             if (kind != null) {
                 details.append(", Kind: ").append(kind);
@@ -128,10 +124,10 @@ public class LoggablePodEventWrapper extends K8sEventWrapper {
     }
 
     public boolean isInitContainerFailure() {
-        if (this.event == null || this.event.getInvolvedObject() == null) {
+        if (this.associatedEvent == null || this.associatedEvent.getInvolvedObject() == null) {
             return false;
         }
-        String fieldPath = this.event.getInvolvedObject().getFieldPath();
+        String fieldPath = this.associatedEvent.getInvolvedObject().getFieldPath();
         if (fieldPath == null) {
             return false;
         }

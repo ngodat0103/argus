@@ -1,4 +1,4 @@
-package dev.datrollout.argus.kubernetes.detection.phase;
+package dev.datrollout.argus.kubernetes.phase;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.fabric8.kubernetes.api.model.Event;
@@ -22,7 +22,7 @@ import org.springframework.data.annotation.PersistenceCreator;
 @Setter
 public abstract class K8sEventWrapper {
     protected Pod failedPod;
-    protected Event event;
+    protected Event associatedEvent;
     // Time window configuration
     protected static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     protected static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH");
@@ -38,22 +38,22 @@ public abstract class K8sEventWrapper {
     /** Extract firstTimestamp from event */
     protected Instant extractFirstTimestamp() {
         try {
-            if (this.event == null) {
+            if (this.associatedEvent == null) {
                 return null;
             }
             // Try firstTimestamp
-            String firstTimestamp = this.event.getFirstTimestamp();
+            String firstTimestamp = this.associatedEvent.getFirstTimestamp();
             if (firstTimestamp != null && !firstTimestamp.isEmpty()) {
                 return Instant.parse(firstTimestamp);
             }
             // Fallback to lastTimestamp
-            String lastTimestamp = this.event.getLastTimestamp();
+            String lastTimestamp = this.associatedEvent.getLastTimestamp();
             if (lastTimestamp != null && !lastTimestamp.isEmpty()) {
                 return Instant.parse(lastTimestamp);
             }
             // Fallback to metadata.creationTimestamp
-            if (this.event.getMetadata() != null) {
-                String creationTimestamp = this.event.getMetadata().getCreationTimestamp();
+            if (this.associatedEvent.getMetadata() != null) {
+                String creationTimestamp = this.associatedEvent.getMetadata().getCreationTimestamp();
                 if (creationTimestamp != null && !creationTimestamp.isEmpty()) {
                     return Instant.parse(creationTimestamp);
                 }
@@ -68,8 +68,8 @@ public abstract class K8sEventWrapper {
     /** Extract namespace from event or pod */
     public String extractNamespace() {
         try {
-            if (this.event != null && this.event.getInvolvedObject() != null) {
-                String namespace = this.event.getInvolvedObject().getNamespace();
+            if (this.associatedEvent != null && this.associatedEvent.getInvolvedObject() != null) {
+                String namespace = this.associatedEvent.getInvolvedObject().getNamespace();
                 if (namespace != null && !namespace.isEmpty()) {
                     return namespace;
                 }
@@ -90,8 +90,8 @@ public abstract class K8sEventWrapper {
     /** Extract reason from event */
     protected String extractReason() {
         try {
-            if (this.event != null) {
-                String reason = this.event.getReason();
+            if (this.associatedEvent != null) {
+                String reason = this.associatedEvent.getReason();
                 if (reason != null && !reason.isEmpty()) {
                     return reason;
                 }
@@ -119,8 +119,8 @@ public abstract class K8sEventWrapper {
      */
     public String getType() {
         try {
-            if (this.event != null) {
-                String type = this.event.getType();
+            if (this.associatedEvent != null) {
+                String type = this.associatedEvent.getType();
                 if (type != null && !type.isEmpty()) {
                     return type;
                 }
@@ -164,11 +164,11 @@ public abstract class K8sEventWrapper {
             }
 
             // Fallback to event's involved object (if it has labels)
-            if (this.event != null
-                    && this.event.getInvolvedObject() != null
-                    && this.event.getMetadata() != null
-                    && this.event.getMetadata().getLabels() != null) {
-                return this.event.getMetadata().getLabels();
+            if (this.associatedEvent != null
+                    && this.associatedEvent.getInvolvedObject() != null
+                    && this.associatedEvent.getMetadata() != null
+                    && this.associatedEvent.getMetadata().getLabels() != null) {
+                return this.associatedEvent.getMetadata().getLabels();
             }
         } catch (Exception e) {
             log.debug("Error extracting labels for {}", getEventType(), e);
@@ -191,10 +191,10 @@ public abstract class K8sEventWrapper {
             }
 
             // Fallback to event's annotations
-            if (this.event != null
-                    && this.event.getMetadata() != null
-                    && this.event.getMetadata().getAnnotations() != null) {
-                return this.event.getMetadata().getAnnotations();
+            if (this.associatedEvent != null
+                    && this.associatedEvent.getMetadata() != null
+                    && this.associatedEvent.getMetadata().getAnnotations() != null) {
+                return this.associatedEvent.getMetadata().getAnnotations();
             }
         } catch (Exception e) {
             log.debug("Error extracting annotations for {}", getEventType(), e);
@@ -209,8 +209,8 @@ public abstract class K8sEventWrapper {
      */
     public String getInvolvedObjectKind() {
         try {
-            if (this.event != null && this.event.getInvolvedObject() != null) {
-                String kind = this.event.getInvolvedObject().getKind();
+            if (this.associatedEvent != null && this.associatedEvent.getInvolvedObject() != null) {
+                String kind = this.associatedEvent.getInvolvedObject().getKind();
                 if (kind != null && !kind.isEmpty()) {
                     return kind;
                 }
@@ -233,8 +233,8 @@ public abstract class K8sEventWrapper {
      */
     public String getInvolvedObjectName() {
         try {
-            if (this.event != null && this.event.getInvolvedObject() != null) {
-                String name = this.event.getInvolvedObject().getName();
+            if (this.associatedEvent != null && this.associatedEvent.getInvolvedObject() != null) {
+                String name = this.associatedEvent.getInvolvedObject().getName();
                 if (name != null && !name.isEmpty()) {
                     return name;
                 }
@@ -260,8 +260,8 @@ public abstract class K8sEventWrapper {
      */
     public Integer getCount() {
         try {
-            if (this.event != null) {
-                Integer count = this.event.getCount();
+            if (this.associatedEvent != null) {
+                Integer count = this.associatedEvent.getCount();
                 if (count != null) {
                     return count;
                 }
@@ -288,11 +288,11 @@ public abstract class K8sEventWrapper {
      */
     public Instant getLastTimestamp() {
         try {
-            if (this.event == null) {
+            if (this.associatedEvent == null) {
                 return null;
             }
 
-            String lastTimestamp = this.event.getLastTimestamp();
+            String lastTimestamp = this.associatedEvent.getLastTimestamp();
             if (lastTimestamp != null && !lastTimestamp.isEmpty()) {
                 return Instant.parse(lastTimestamp);
             }
@@ -313,8 +313,8 @@ public abstract class K8sEventWrapper {
      */
     public String getMessage() {
         try {
-            if (this.event != null) {
-                String message = this.event.getMessage();
+            if (this.associatedEvent != null) {
+                String message = this.associatedEvent.getMessage();
                 if (message != null && !message.isEmpty()) {
                     return message;
                 }
@@ -332,8 +332,8 @@ public abstract class K8sEventWrapper {
      */
     public String getSourceComponent() {
         try {
-            if (this.event != null && this.event.getSource() != null) {
-                String component = this.event.getSource().getComponent();
+            if (this.associatedEvent != null && this.associatedEvent.getSource() != null) {
+                String component = this.associatedEvent.getSource().getComponent();
                 if (component != null && !component.isEmpty()) {
                     return component;
                 }
@@ -351,8 +351,8 @@ public abstract class K8sEventWrapper {
      */
     public String getReportingController() {
         try {
-            if (this.event != null) {
-                String controller = this.event.getReportingComponent();
+            if (this.associatedEvent != null) {
+                String controller = this.associatedEvent.getReportingComponent();
                 if (controller != null && !controller.isEmpty()) {
                     return controller;
                 }
@@ -370,11 +370,11 @@ public abstract class K8sEventWrapper {
      */
     public String getContainerName() {
         try {
-            if (this.event != null
-                    && this.event.getInvolvedObject() != null
-                    && this.event.getInvolvedObject().getFieldPath() != null) {
+            if (this.associatedEvent != null
+                    && this.associatedEvent.getInvolvedObject() != null
+                    && this.associatedEvent.getInvolvedObject().getFieldPath() != null) {
                 // Field path format: spec.containers{container-name}
-                String fieldPath = this.event.getInvolvedObject().getFieldPath();
+                String fieldPath = this.associatedEvent.getInvolvedObject().getFieldPath();
                 if (fieldPath.contains("spec.containers{")) {
                     int start = fieldPath.indexOf('{') + 1;
                     int end = fieldPath.indexOf('}');
