@@ -15,10 +15,11 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class OomKilledDetector implements SmartLifecycle {
+public class MemoryIssueDetector implements SmartLifecycle {
 
     private final KubernetesClient kubernetesClient;
     private final MemoryContainerWatcher memoryContainerWatcher;
+    private final NodeMemoryWatcher nodeMemoryWatcher;
     private Watch containerWatch;
     private Watch kubeletWatch;
     private volatile boolean running = false;
@@ -27,6 +28,8 @@ public class OomKilledDetector implements SmartLifecycle {
     public void start() {
         this.containerWatch = kubernetesClient.pods().inAnyNamespace().watch(this.memoryContainerWatcher);
         log.info("Started OomKillWatcher");
+        this.kubeletWatch = this.kubernetesClient.nodes().watch(this.nodeMemoryWatcher);
+        log.info("Started nodeMemoryWatcher");
         running = true;
     }
 
@@ -44,6 +47,7 @@ public class OomKilledDetector implements SmartLifecycle {
     @Override
     public void stop() {
         if (containerWatch != null) containerWatch.close();
+        if (kubeletWatch != null) kubeletWatch.close();
         running = false;
     }
 
