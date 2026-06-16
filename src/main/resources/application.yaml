@@ -50,6 +50,8 @@ embabel:
           default-timeout: 300s
       tools:
         lazy-init: true
+      scanning:
+        bean: true
   models:
     default-llm: deepseek-chat
     llms:

@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @SuperBuilder
-public class ContainerMemoryKillEvent extends CrashLoopBackEventWrapper {
+public class ContainerMemoryKillEventWrapper extends CrashLoopBackEventWrapper {
     public String getOOMExplanation() {
         String containerName = getFailedContainerName();
         if (containerName == null || failedPod == null) {
