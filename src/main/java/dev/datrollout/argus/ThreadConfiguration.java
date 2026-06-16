@@ -3,10 +3,13 @@ package dev.datrollout.argus;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.util.concurrent.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.task.TaskExecutionAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 @Configuration(proxyBeanMethods = false)
 @Slf4j
@@ -43,6 +46,11 @@ public class ThreadConfiguration {
         threadPoolExecutor.setThreadFactory(threadFactory);
         threadPoolExecutor.prestartAllCoreThreads();
         return threadPoolExecutor;
+    }
+
+    @Bean
+    Scheduler scheduler(@Qualifier(VIRTUAL_THREAD) ExecutorService executorService) {
+        return Schedulers.fromExecutor(executorService);
     }
 
     @Bean(SCHEDULED_THREAD)

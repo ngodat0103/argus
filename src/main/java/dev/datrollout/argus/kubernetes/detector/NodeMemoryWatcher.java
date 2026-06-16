@@ -4,8 +4,8 @@ import dev.datrollout.argus.kubernetes.phase.node.NodePressureEvent;
 import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeCondition;
 import io.fabric8.kubernetes.api.model.NodeStatus;
-import io.fabric8.kubernetes.client.Watcher;
-import io.fabric8.kubernetes.client.WatcherException;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.Watch;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,22 +16,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Component;
 
 @Slf4j
-@Component
+// @Component // Temporary disable for now
 @RequiredArgsConstructor
-public class NodeMemoryWatcher implements Watcher<Node> {
+public class NodeMemoryWatcher extends AbstractKubernetesWatcher<Node> {
 
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final KubernetesClient kubernetesClient;
     private final ConcurrentHashMap<String, String> seenPressureStates = new ConcurrentHashMap<>();
     private static final List<String> PRESSURE_CONDITION_TYPES =
             List.of("MemoryPressure", "DiskPressure", "PIDPressure");
 
     @Override
-    public boolean reconnecting() {
-        log.debug("NodeMemoryWatcher: reconnecting=true, watch will survive HTTP 410 Gone");
-        return true;
+    protected Watch startWatch() {
+        return kubernetesClient.nodes().watch(this);
     }
 
     @Override
@@ -56,26 +55,6 @@ public class NodeMemoryWatcher implements Watcher<Node> {
         }
 
         conditions.forEach(condition -> processCondition(node, condition));
-    }
-
-    @Override
-    public void onClose() {
-        log.info("NodeMemoryWatcher: graceful close — watch lifecycle ended by owner");
-    }
-
-    @Override
-    public void onClose(WatcherException cause) {
-        if (cause == null) {
-            log.debug("NodeMemoryWatcher.onClose(WatcherException) called with null cause — treating as graceful");
-            return;
-        }
-        if (cause.isHttpGone()) {
-            log.warn("NodeMemoryWatcher: watch expired (HTTP 410 Gone), Fabric8 will reconnect automatically");
-        } else {
-            log.error(
-                    "NodeMemoryWatcher: non-recoverable watch failure — publishing WatcherFailedEvent for agent triage",
-                    cause);
-        }
     }
 
     // -------------------------------------------------------------------------

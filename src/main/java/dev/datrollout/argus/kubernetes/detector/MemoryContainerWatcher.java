@@ -1,12 +1,9 @@
 package dev.datrollout.argus.kubernetes.detector;
 
-import dev.datrollout.argus.kubernetes.phase.runtime.MemoryKillPodEventWrapper;
-import io.fabric8.kubernetes.api.model.ContainerState;
-import io.fabric8.kubernetes.api.model.ContainerStatus;
-import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.api.model.PodStatus;
-import io.fabric8.kubernetes.client.Watcher;
-import io.fabric8.kubernetes.client.WatcherException;
+import dev.datrollout.argus.kubernetes.phase.runtime.ContainerMemoryKillEvent;
+import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.Watch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -15,20 +12,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class MemoryContainerWatcher implements Watcher<Pod> {
+public class MemoryContainerWatcher extends AbstractKubernetesWatcher<Pod> {
 
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final KubernetesClient kubernetesClient;
     private final ConcurrentHashMap<String, Integer> seenRestartCounts = new ConcurrentHashMap<>();
 
     @Override
-    public boolean reconnecting() {
-        log.debug("MemoryContainerWatcher: reconnecting=true, watch will survive HTTP 410 Gone");
-        return true;
+    protected Watch startWatch() {
+        return kubernetesClient.pods().inAnyNamespace().watch(this);
     }
 
     @Override
@@ -85,38 +83,18 @@ public class MemoryContainerWatcher implements Watcher<Pod> {
                     resolveExitCode(cs),
                     resolveReason(cs));
 
-            var wrapper = MemoryKillPodEventWrapper.builder()
+            var memoryKillPodEventWrapper = ContainerMemoryKillEvent.builder()
                     .associatedEvent(null)
                     .failedPod(pod)
                     .build();
             log.debug("Publishing MemoryKillPodEventWrapper: container={} pod={}/{}", cs.getName(), ns, name);
-            applicationEventPublisher.publishEvent(wrapper);
+            applicationEventPublisher.publishEvent(memoryKillPodEventWrapper);
             log.debug(
                     "MemoryKillPodEventWrapper published successfully for container={} pod={}/{}",
                     cs.getName(),
                     ns,
                     name);
         });
-    }
-
-    @Override
-    public void onClose() {
-        log.info("MemoryContainerWatcher: graceful close — watch lifecycle ended by owner");
-    }
-
-    @Override
-    public void onClose(WatcherException cause) {
-        if (cause == null) {
-            log.debug("MemoryContainerWatcher.onClose(WatcherException) called with null cause — treating as graceful");
-            return;
-        }
-        if (cause.isHttpGone()) {
-            log.warn("MemoryContainerWatcher: watch expired (HTTP 410 Gone), Fabric8 will reconnect automatically");
-        } else {
-            log.error(
-                    "MemoryContainerWatcher: non-recoverable watch failure — publishing WatcherFailedEvent for agent triage",
-                    cause);
-        }
     }
 
     // -------------------------------------------------------------------------
@@ -146,7 +124,7 @@ public class MemoryContainerWatcher implements Watcher<Pod> {
                 nullSafeSize(status.getInitContainerStatuses()),
                 nullSafeSize(status.getEphemeralContainerStatuses()));
 
-        var hits = all.stream()
+        return all.stream()
                 .filter(cs -> {
                     boolean oom = isOomKilled(cs);
                     log.debug(
@@ -157,8 +135,6 @@ public class MemoryContainerWatcher implements Watcher<Pod> {
                     return oom;
                 })
                 .toList();
-
-        return hits;
     }
 
     private boolean isOomKilled(ContainerStatus cs) {
@@ -204,6 +180,7 @@ public class MemoryContainerWatcher implements Watcher<Pod> {
                 + nullSafeSize(status.getEphemeralContainerStatuses());
     }
 
+    @EventListener
     private int nullSafeSize(List<?> list) {
         return list != null ? list.size() : 0;
     }
@@ -220,7 +197,8 @@ public class MemoryContainerWatcher implements Watcher<Pod> {
         return Optional.ofNullable(cs.getLastState())
                 .map(ContainerState::getTerminated)
                 .or(() -> Optional.ofNullable(cs.getState()).map(ContainerState::getTerminated))
-                .map(t -> t.getReason() != null ? t.getReason() : "unknown")
+                .filter(t -> t.getReason() != null)
+                .map(ContainerStateTerminated::getReason)
                 .orElse("unknown");
     }
 }
