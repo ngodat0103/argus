@@ -62,7 +62,7 @@ public class ContainerMemoryKubernetesIncident extends KubernetesIncidentReport 
         ContainerMemoryKubernetesIncident incident = new ContainerMemoryKubernetesIncident();
 
         String containerName = containerMemoryKillEventWrapper.getFailedContainerName();
-        Pod failedPod = containerMemoryKillEventWrapper.getFailedPod();
+        Pod failedPod = containerMemoryKillEventWrapper.getAssociatedPod();
 
         // ─── Container Identity ──────────────────────────────────────────────
         incident.setPodName(containerMemoryKillEventWrapper.getPodName());
@@ -70,7 +70,7 @@ public class ContainerMemoryKubernetesIncident extends KubernetesIncidentReport 
             incident.setPodUid(failedPod.getMetadata().getUid());
         }
         incident.setContainerName(containerName);
-        incident.setInitContainer(containerMemoryKillEventWrapper.isInitContainerFailure());
+        //        incident.setInitContainer(containerMemoryKillEventWrapper.isInitContainerFailure());
 
         // ─── OOM Signal ──────────────────────────────────────────────────────
         Integer restartCount = containerMemoryKillEventWrapper.getContainerRestartCount();

@@ -45,28 +45,19 @@ public class MemoryAgentResponder {
             - Root cause hypothesis and confidence (0.0-1.0)
             - Whether immediate remediation is required
             - Suggested memory limit in bytes and the percentage increase over current limit
-            - Whether the change requires human approval before being applied
             """);
 
     @Action
     @AchievesGoal(description = "A report about memory issues")
     public ContainerMemoryKubernetesIncident investigateMemoryIssues(
             OperationContext operationContext, ContainerMemoryKillEventWrapper containerMemoryKillEventWrapper) {
-        ContainerMemoryKubernetesIncident containerMemoryKubernetesIncident =
-                ContainerMemoryKubernetesIncident.fromContainerMemoryEventWrapper(containerMemoryKillEventWrapper);
-        Map<String, Object> parameters = Map.of(
-                "namespace",
-                containerMemoryKubernetesIncident.getNamespace(),
-                "podName",
-                containerMemoryKubernetesIncident.getPodName());
-        String renderedPrompt = PROMPT_TEMPLATE.render(parameters);
-        String executionSummary = operationContext
+        String renderedPrompt = "";
+        ContainerMemoryKubernetesIncident containerMemoryKubernetesIncident = operationContext
                 .ai()
                 .withDefaultLlm()
-                .withPromptContributor(containerMemoryKubernetesIncident)
-                .withToolObject(containerMemoryKubernetesIncident)
-                .generateText(renderedPrompt);
-        containerMemoryKubernetesIncident.setExecutionSummary(executionSummary);
+                .withPromptContributor(containerMemoryKillEventWrapper)
+                .withReference(containerMemoryKillEventWrapper)
+                .createObject(renderedPrompt,ContainerMemoryKubernetesIncident.class);
         return containerMemoryKubernetesIncident;
     }
 }

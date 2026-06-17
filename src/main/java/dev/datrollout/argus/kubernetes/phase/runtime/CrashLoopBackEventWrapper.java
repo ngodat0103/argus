@@ -1,10 +1,13 @@
 package dev.datrollout.argus.kubernetes.phase.runtime;
 
 import lombok.Getter;
-import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Slf4j
-@SuperBuilder
-public class CrashLoopBackEventWrapper extends LoggablePodEventWrapper {}
+public class CrashLoopBackEventWrapper extends LoggablePodEventWrapper {
+    @Override
+    public String getFailedContainerName() {
+        return "";
+    }
+}

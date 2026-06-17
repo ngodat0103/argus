@@ -83,10 +83,7 @@ public class MemoryContainerWatcher extends AbstractKubernetesWatcher<Pod> {
                     resolveExitCode(cs),
                     resolveReason(cs));
 
-            var memoryKillPodEventWrapper = ContainerMemoryKillEventWrapper.builder()
-                    .associatedEvent(null)
-                    .failedPod(pod)
-                    .build();
+            var memoryKillPodEventWrapper = new ContainerMemoryKillEventWrapper(cs.getName(), pod);
             log.debug("Publishing MemoryKillPodEventWrapper: container={} pod={}/{}", cs.getName(), ns, name);
             applicationEventPublisher.publishEvent(memoryKillPodEventWrapper);
             log.debug(

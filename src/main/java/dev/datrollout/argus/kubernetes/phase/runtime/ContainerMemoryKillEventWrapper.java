@@ -1,21 +1,36 @@
 package dev.datrollout.argus.kubernetes.phase.runtime;
 
+import com.embabel.agent.api.annotation.LlmTool;
+import com.embabel.agent.api.tool.Tool;
+import com.embabel.common.util.StringTransformer;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerStatus;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Quantity;
+
+import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
-import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 
 @Slf4j
-@SuperBuilder
-public class ContainerMemoryKillEventWrapper extends CrashLoopBackEventWrapper {
+public class ContainerMemoryKillEventWrapper extends LoggablePodEventWrapper {
+
+    private final String containerName;
+
+    public ContainerMemoryKillEventWrapper(String containerName, Pod associatedPod) {
+        super();
+        this.setAssociatedPod(associatedPod);
+        this.containerName = containerName;
+    }
+
+    @LlmTool
     public String getOOMExplanation() {
         String containerName = getFailedContainerName();
-        if (containerName == null || failedPod == null) {
+        if (containerName == null || associatedPod == null) {
             return "Cannot determine OOM details";
         }
 
@@ -66,11 +81,11 @@ public class ContainerMemoryKillEventWrapper extends CrashLoopBackEventWrapper {
 
     public MemoryConfig getMemoryConfig() {
         String containerName = getFailedContainerName();
-        if (failedPod == null || containerName == null) {
+        if (associatedPod == null || containerName == null) {
             return null;
         }
 
-        Container container = failedPod.getSpec().getContainers().stream()
+        Container container = associatedPod.getSpec().getContainers().stream()
                 .filter(c -> containerName.equals(c.getName()))
                 .findFirst()
                 .orElse(null);
@@ -100,41 +115,22 @@ public class ContainerMemoryKillEventWrapper extends CrashLoopBackEventWrapper {
                 .build();
     }
 
-    public MemoryIssue getMemoryIssueType() {
-        MemoryConfig config = getMemoryConfig();
-
-        if (config == null) {
-            return MemoryIssue.UNKNOWN;
-        }
-
-        if (!config.hasMemoryLimit) {
-            return MemoryIssue.NO_LIMIT;
-        }
-
-        if (!config.hasMemoryRequest) {
-            return MemoryIssue.NO_REQUEST;
-        }
-
-        return MemoryIssue.LIMIT_EXCEEDED;
-    }
-
     /** Get restart count for the failed container */
     public Integer getContainerRestartCount() {
         String containerName = getFailedContainerName();
-        if (failedPod == null
+        if (associatedPod == null
                 || containerName == null
-                || failedPod.getStatus() == null
-                || failedPod.getStatus().getContainerStatuses() == null) {
+                || associatedPod.getStatus() == null
+                || associatedPod.getStatus().getContainerStatuses() == null) {
             return null;
         }
 
-        return failedPod.getStatus().getContainerStatuses().stream()
+        return associatedPod.getStatus().getContainerStatuses().stream()
                 .filter(cs -> containerName.equals(cs.getName()))
                 .findFirst()
                 .map(ContainerStatus::getRestartCount)
                 .orElse(null);
     }
-
     /** Convert Kubernetes memory quantity to bytes */
     private Long parseMemoryToBytes(Quantity quantity) {
         if (quantity == null || quantity.getAmount() == null) {
@@ -166,22 +162,46 @@ public class ContainerMemoryKillEventWrapper extends CrashLoopBackEventWrapper {
         }
     }
 
-    /** Format bytes to human-readable format */
-    private String formatBytes(Long bytes) {
-        if (bytes == null) {
-            return "Not set";
-        }
-
-        if (bytes < 1024) {
-            return bytes + " B";
-        } else if (bytes < 1024 * 1024) {
-            return String.format("%.2f Ki", bytes / 1024.0);
-        } else if (bytes < 1024 * 1024 * 1024) {
-            return String.format("%.2f Mi", bytes / (1024.0 * 1024.0));
-        } else {
-            return String.format("%.2f Gi", bytes / (1024.0 * 1024.0 * 1024.0));
-        }
+    @Override
+    public String getFailedContainerName() {
+        return this.containerName;
     }
+
+    @Override
+    public @NotNull String notes() {
+        return "";
+    }
+
+    @Override
+    public @NotNull String getDescription() {
+        return "";
+    }
+
+    @Override
+    public @NotNull String getName() {
+        return "";
+    }
+
+    @Override
+    public @NotNull List<Tool> tools() {
+        return super.tools();
+    }
+
+    @Override
+    public @NotNull String contribution() {
+        return super.contribution();
+    }
+
+    @Override
+    public @NotNull String toolPrefix() {
+        return super.toolPrefix();
+    }
+
+    @Override
+    public @NotNull StringTransformer getNamingStrategy() {
+        return super.getNamingStrategy();
+    }
+
 
     /** Memory configuration data class */
     @Data

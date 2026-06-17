@@ -1,27 +1,22 @@
 package dev.datrollout.argus.kubernetes.phase;
 
+import com.embabel.agent.api.reference.LlmReference;
+import com.embabel.common.ai.prompt.PromptContributor;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.Pod;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.experimental.SuperBuilder;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.annotation.PersistenceCreator;
 
 @Getter
-@SuperBuilder
 @Slf4j
 @NoArgsConstructor
-@AllArgsConstructor(onConstructor_ = @PersistenceCreator)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@Setter
-public abstract class K8sEventWrapper {
-    protected Pod failedPod;
+@Setter(value = AccessLevel.PROTECTED)
+public abstract class K8sEventWrapper implements PromptContributor, LlmReference {
+    protected Pod associatedPod;
     protected Event associatedEvent;
     // Time window configuration
     protected static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -75,8 +70,8 @@ public abstract class K8sEventWrapper {
                 }
             }
 
-            if (this.failedPod != null && this.failedPod.getMetadata() != null) {
-                String namespace = this.failedPod.getMetadata().getNamespace();
+            if (this.associatedPod != null && this.associatedPod.getMetadata() != null) {
+                String namespace = this.associatedPod.getMetadata().getNamespace();
                 if (namespace != null && !namespace.isEmpty()) {
                     return namespace;
                 }
@@ -157,10 +152,10 @@ public abstract class K8sEventWrapper {
     public java.util.Map<String, String> getLabels() {
         try {
             // Try to get from pod first
-            if (this.failedPod != null
-                    && this.failedPod.getMetadata() != null
-                    && this.failedPod.getMetadata().getLabels() != null) {
-                return this.failedPod.getMetadata().getLabels();
+            if (this.associatedPod != null
+                    && this.associatedPod.getMetadata() != null
+                    && this.associatedPod.getMetadata().getLabels() != null) {
+                return this.associatedPod.getMetadata().getLabels();
             }
 
             // Fallback to event's involved object (if it has labels)
@@ -184,10 +179,10 @@ public abstract class K8sEventWrapper {
     public java.util.Map<String, String> getAnnotations() {
         try {
             // Try to get from pod first
-            if (this.failedPod != null
-                    && this.failedPod.getMetadata() != null
-                    && this.failedPod.getMetadata().getAnnotations() != null) {
-                return this.failedPod.getMetadata().getAnnotations();
+            if (this.associatedPod != null
+                    && this.associatedPod.getMetadata() != null
+                    && this.associatedPod.getMetadata().getAnnotations() != null) {
+                return this.associatedPod.getMetadata().getAnnotations();
             }
 
             // Fallback to event's annotations
@@ -217,7 +212,7 @@ public abstract class K8sEventWrapper {
             }
 
             // Fallback: if we have a pod, return "Pod"
-            if (this.failedPod != null) {
+            if (this.associatedPod != null) {
                 return "Pod";
             }
         } catch (Exception e) {
@@ -241,8 +236,8 @@ public abstract class K8sEventWrapper {
             }
 
             // Fallback: try to get from pod
-            if (this.failedPod != null && this.failedPod.getMetadata() != null) {
-                String name = this.failedPod.getMetadata().getName();
+            if (this.associatedPod != null && this.associatedPod.getMetadata() != null) {
+                String name = this.associatedPod.getMetadata().getName();
                 if (name != null && !name.isEmpty()) {
                     return name;
                 }
@@ -396,8 +391,8 @@ public abstract class K8sEventWrapper {
      */
     public String getPodName() {
         try {
-            if (this.failedPod != null && this.failedPod.getMetadata() != null) {
-                String name = this.failedPod.getMetadata().getName();
+            if (this.associatedPod != null && this.associatedPod.getMetadata() != null) {
+                String name = this.associatedPod.getMetadata().getName();
                 if (name != null && !name.isEmpty()) {
                     return name;
                 }
@@ -420,8 +415,8 @@ public abstract class K8sEventWrapper {
      */
     public String getNodeName() {
         try {
-            if (this.failedPod != null && this.failedPod.getSpec() != null) {
-                String nodeName = this.failedPod.getSpec().getNodeName();
+            if (this.associatedPod != null && this.associatedPod.getSpec() != null) {
+                String nodeName = this.associatedPod.getSpec().getNodeName();
                 if (nodeName != null && !nodeName.isEmpty()) {
                     return nodeName;
                 }

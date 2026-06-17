@@ -4,10 +4,8 @@ import dev.datrollout.argus.kubernetes.phase.K8sEventWrapper;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.AllArgsConstructor;
-import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
-@SuperBuilder
 @Slf4j
 @AllArgsConstructor
 public abstract class ProvisioningEventWrapper extends K8sEventWrapper {
