@@ -25,7 +25,6 @@ public class KubernetesEventListener {
     public void onContainerMemoryKillEvent(ContainerMemoryKillEventWrapper containerMemoryKillEventWrapper) {
 
         Mono.fromRunnable(() -> {
-                    // Todo log here, place holder here
                     log.info("Received container memory kill event {}", containerMemoryKillEventWrapper);
                     ContainerMemoryKubernetesIncident containerMemoryKubernetesIncident = AgentInvocation.builder(
                                     this.agentPlatform)

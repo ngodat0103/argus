@@ -1,8 +1,6 @@
 package dev.datrollout.argus.kubernetes.persistence;
 
 import com.embabel.agent.api.annotation.LlmTool;
-import com.embabel.common.ai.prompt.PromptContribution;
-import com.embabel.common.ai.prompt.PromptContributionLocation;
 import dev.datrollout.argus.kubernetes.phase.runtime.ContainerMemoryKillEventWrapper;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerState;
@@ -18,7 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * OOMKilled incident at the pod/container level.
@@ -166,12 +163,50 @@ public class ContainerMemoryKubernetesIncident extends KubernetesIncidentReport 
         return null;
     }
 
-    // Todo it should support methods that LLm can use, tailor with @LLmTool like below
-
-    @LlmTool
-    public String getContainerMemoryRequest(){
-        return this.requestMemoryBytes + " bytes";
+    @LlmTool(description = "Returns the memory request configured for this container.")
+    public String getContainerMemoryRequest() {
+        if (this.requestMemoryBytes == 0) {
+            return "No memory request set";
+        }
+        return this.requestMemoryBytes + " bytes (" + (this.requestMemoryBytes / (1024 * 1024)) + " MiB)";
     }
+
+    @LlmTool(description = "Returns the memory limit configured for this container.")
+    public String getContainerMemoryLimit() {
+        if (this.limitMemoryBytes == 0) {
+            return "No memory limit set (container can use unlimited node memory)";
+        }
+        return this.limitMemoryBytes + " bytes (" + (this.limitMemoryBytes / (1024 * 1024)) + " MiB)";
+    }
+
+    @LlmTool(description = "Returns the termination signal details: exit code, reason, and any termination message.")
+    public String getTerminationDetails() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Exit code: ").append(exitCode != null ? exitCode : "unknown");
+        sb.append(", Reason: ").append(terminationReason != null ? terminationReason : "unknown");
+        if (terminationMessage != null && !terminationMessage.isBlank()) {
+            sb.append(", Message: ").append(terminationMessage);
+        }
+        return sb.toString();
+    }
+
+    @LlmTool(
+            description = "Returns restart count history for this container to help determine if the OOM is recurring.")
+    public String getRestartHistory() {
+        int newCrashes = Math.max(0, restartCount - restartCountAtDetection);
+        return "Current restart count: " + restartCount
+                + ". Restarts since detection: " + newCrashes
+                + (restartCount > 5 ? " — high restart count, likely recurring." : ".");
+    }
+
+    @LlmTool(description = "Returns the container log lines captured immediately before the OOMKill crash.")
+    public String getLastContainerLogs() {
+        if (lastLogTailBeforeCrash == null || lastLogTailBeforeCrash.isBlank()) {
+            return "No logs captured before the crash.";
+        }
+        return lastLogTailBeforeCrash;
+    }
+
     @Override
     protected String incidentTypeTag() {
         return "container-memory-killed";
@@ -179,7 +214,56 @@ public class ContainerMemoryKubernetesIncident extends KubernetesIncidentReport 
 
     @Override
     public @NotNull String contribution() {
-        return ""; // Todo context tailor for LLM friendly, it should have instruct to tell LLM to use tools for details
-    }
+        StringBuilder sb = new StringBuilder();
+        sb.append("## OOMKilled Incident Context\n\n");
 
+        sb.append("- **Namespace:** ")
+                .append(getNamespace() != null ? getNamespace() : "unknown")
+                .append("\n");
+        sb.append("- **Pod:** ").append(podName != null ? podName : "unknown").append("\n");
+        sb.append("- **Container:** ").append(containerName != null ? containerName : "unknown");
+        sb.append(initContainer ? " (init container)" : " (regular container)").append("\n");
+        sb.append("- **Termination:** ").append(terminationReason != null ? terminationReason : "OOMKilled");
+        sb.append(" (exit code ").append(exitCode != null ? exitCode : "137").append(")");
+        sb.append(", restart count: ").append(restartCount).append("\n");
+
+        if (limitMemoryBytes > 0) {
+            sb.append("- **Memory Limit:** ")
+                    .append(limitMemoryBytes)
+                    .append(" bytes (")
+                    .append(limitMemoryBytes / (1024 * 1024))
+                    .append(" MiB)\n");
+        } else {
+            sb.append("- **Memory Limit:** No limit set\n");
+        }
+        if (requestMemoryBytes > 0) {
+            sb.append("- **Memory Request:** ")
+                    .append(requestMemoryBytes)
+                    .append(" bytes (")
+                    .append(requestMemoryBytes / (1024 * 1024))
+                    .append(" MiB)\n");
+        } else {
+            sb.append("- **Memory Request:** No request set\n");
+        }
+
+        sb.append("- **Image:** ")
+                .append(imageRef != null ? imageRef : "unknown")
+                .append("\n");
+
+        if (memoryLeakSuspected || burstWorkloadSuspected) {
+            sb.append("- **Pre-classified:** ");
+            if (memoryLeakSuspected) sb.append("memory leak suspected");
+            if (memoryLeakSuspected && burstWorkloadSuspected) sb.append(", ");
+            if (burstWorkloadSuspected) sb.append("burst workload suspected");
+            sb.append("\n");
+        }
+
+        sb.append("\nUse the following tools to gather evidence before drawing conclusions:\n");
+        sb.append("- `getContainerMemoryRequest()` / `getContainerMemoryLimit()` — confirm resource configuration\n");
+        sb.append("- `getTerminationDetails()` — full termination signal\n");
+        sb.append("- `getRestartHistory()` — assess recurrence pattern\n");
+        sb.append("- `getLastContainerLogs()` — application output immediately before the crash\n");
+
+        return sb.toString();
+    }
 }

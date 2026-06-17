@@ -35,8 +35,8 @@ public class DeepSeekChatbotConfiguration extends DeepSeekModelsConfig {
     private final ExecutorService executorService;
 
     public DeepSeekChatbotConfiguration(
-            @Value("DEEPSEEK_BASE_URL") String envBaseUrl,
-            @Value("DEEPSEEK_API_KEY") String envApiKey,
+            @Value("${DEEPSEEK_BASE_URL:https://api.deepseek.com}") String envBaseUrl,
+            @Value("${DEEPSEEK_API_KEY}") String envApiKey,
             @NotNull DeepSeekProperties properties,
             @Qualifier(ThreadConfiguration.VIRTUAL_THREAD) ExecutorService executorService,
             @NotNull ObjectProvider<ObservationRegistry> observationRegistry) {
