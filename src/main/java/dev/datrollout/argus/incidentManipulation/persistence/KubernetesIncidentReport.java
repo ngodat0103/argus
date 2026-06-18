@@ -1,4 +1,4 @@
-package dev.datrollout.argus.kubernetes.persistence;
+package dev.datrollout.argus.incidentManipulation.persistence;
 
 import com.embabel.common.ai.prompt.PromptContributor;
 import jakarta.persistence.*;

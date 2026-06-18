@@ -1,4 +1,4 @@
-package dev.datrollout.argus.kubernetes.persistence;
+package dev.datrollout.argus.incidentManipulation.persistence;
 
 import jakarta.persistence.*;
 import java.time.Instant;

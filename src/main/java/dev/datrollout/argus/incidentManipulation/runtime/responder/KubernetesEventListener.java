@@ -1,9 +1,9 @@
-package dev.datrollout.argus.kubernetes.responder;
+package dev.datrollout.argus.incidentManipulation.runtime.responder;
 
 import com.embabel.agent.api.invocation.AgentInvocation;
 import com.embabel.agent.core.AgentPlatform;
-import dev.datrollout.argus.kubernetes.persistence.ContainerMemoryKubernetesIncident;
-import dev.datrollout.argus.kubernetes.phase.runtime.ContainerMemoryKillEventWrapper;
+import dev.datrollout.argus.incidentManipulation.runtime.persistence.ContainerMemoryKubernetesIncident;
+
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import lombok.RequiredArgsConstructor;

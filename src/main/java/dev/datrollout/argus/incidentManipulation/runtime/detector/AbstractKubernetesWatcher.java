@@ -1,4 +1,4 @@
-package dev.datrollout.argus.kubernetes.detector;
+package dev.datrollout.argus.incidentManipulation.runtime.detector;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.Watch;

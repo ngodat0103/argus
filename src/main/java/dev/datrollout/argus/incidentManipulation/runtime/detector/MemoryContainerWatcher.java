@@ -1,6 +1,5 @@
-package dev.datrollout.argus.kubernetes.detector;
+package dev.datrollout.argus.incidentManipulation.runtime.detector;
 
-import dev.datrollout.argus.kubernetes.phase.runtime.ContainerMemoryKillEventWrapper;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.Watch;

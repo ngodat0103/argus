@@ -1,7 +1,7 @@
-package dev.datrollout.argus.kubernetes.persistence;
+package dev.datrollout.argus.incidentManipulation.runtime.persistence;
 
 import com.embabel.agent.api.annotation.LlmTool;
-import dev.datrollout.argus.kubernetes.phase.runtime.ContainerMemoryKillEventWrapper;
+import dev.datrollout.argus.incidentManipulation.persistence.KubernetesIncidentReport;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerState;
 import io.fabric8.kubernetes.api.model.ContainerStateTerminated;
@@ -9,7 +9,7 @@ import io.fabric8.kubernetes.api.model.ContainerStatus;
 import io.fabric8.kubernetes.api.model.Pod;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import java.time.Instant;
+
 import java.util.List;
 import java.util.Optional;
 import lombok.Getter;
@@ -56,68 +56,6 @@ public class ContainerMemoryKubernetesIncident extends KubernetesIncidentReport 
     // ─── Suggested Remediation ───────────────────────────────────────────────
     private long suggestedLimitBytes;
     private String limitIncreasePct; // e.g. "50%" — for the approval gate message
-
-    public static ContainerMemoryKubernetesIncident fromContainerMemoryEventWrapper(
-            ContainerMemoryKillEventWrapper containerMemoryKillEventWrapper) {
-        ContainerMemoryKubernetesIncident incident = new ContainerMemoryKubernetesIncident();
-
-        String containerName = containerMemoryKillEventWrapper.getFailedContainerName();
-        Pod failedPod = containerMemoryKillEventWrapper.getAssociatedPod();
-
-        // ─── Container Identity ──────────────────────────────────────────────
-        incident.setPodName(containerMemoryKillEventWrapper.getPodName());
-        if (failedPod != null && failedPod.getMetadata() != null) {
-            incident.setPodUid(failedPod.getMetadata().getUid());
-        }
-        incident.setContainerName(containerName);
-        //        incident.setInitContainer(containerMemoryKillEventWrapper.isInitContainerFailure());
-
-        // ─── OOM Signal ──────────────────────────────────────────────────────
-        Integer restartCount = containerMemoryKillEventWrapper.getContainerRestartCount();
-        int restarts = restartCount != null ? restartCount : 0;
-        incident.setRestartCount(restarts);
-        incident.setRestartCountAtDetection(restarts);
-
-        ContainerStateTerminated terminated = terminatedState(failedPod, containerName);
-        if (terminated != null) {
-            incident.setExitCode(terminated.getExitCode() != null ? String.valueOf(terminated.getExitCode()) : "137");
-            incident.setTerminationReason(terminated.getReason() != null ? terminated.getReason() : "OOMKilled");
-            incident.setTerminationMessage(
-                    terminated.getMessage() != null
-                            ? terminated.getMessage()
-                            : containerMemoryKillEventWrapper.getMessage());
-        } else {
-            incident.setExitCode("137");
-            incident.setTerminationReason("OOMKilled");
-            incident.setTerminationMessage(containerMemoryKillEventWrapper.getMessage());
-        }
-
-        // ─── Memory Configuration ────────────────────────────────────────────
-        ContainerMemoryKillEventWrapper.MemoryConfig memoryConfig = containerMemoryKillEventWrapper.getMemoryConfig();
-        if (memoryConfig != null) {
-            if (memoryConfig.getMemoryRequestBytes() != null) {
-                incident.setRequestMemoryBytes(memoryConfig.getMemoryRequestBytes());
-            }
-            if (memoryConfig.getMemoryLimitBytes() != null) {
-                incident.setLimitMemoryBytes(memoryConfig.getMemoryLimitBytes());
-            }
-        }
-
-        // ─── Diagnosis ───────────────────────────────────────────────────────
-        incident.setImageRef(resolveImageRef(failedPod, containerName));
-        List<String> lineLogs = containerMemoryKillEventWrapper.getLineLogs();
-        if (lineLogs != null && !lineLogs.isEmpty()) {
-            incident.setLastLogTailBeforeCrash(String.join("\n", lineLogs));
-        }
-
-        // ─── Base incident fields ────────────────────────────────────────────
-        incident.setNamespace(containerMemoryKillEventWrapper.getNamespace());
-        incident.setNodeName(containerMemoryKillEventWrapper.getNodeName());
-        incident.setDetectedAt(Instant.now());
-        incident.setDetectionSource(DetectionSource.WATCHER);
-        incident.setStatus(IncidentStatus.DETECTED);
-        return incident;
-    }
 
     /** Prefer the current terminated state, falling back to the last terminated state. */
     private static ContainerStateTerminated terminatedState(Pod pod, String containerName) {

@@ -13,5 +13,5 @@ totp:
   issuer: "[dev] Argus Telegram Agent"
 logging:
   level:
-    dev.datrollout.argus.kubernetes.detector.NodeMemoryWatcher: DEBUG
-    dev.datrollout.argus.kubernetes.detector.MemoryContainerWatcher: DEBUG
+    dev.datrollout.argus.kubernetes.detector.dev.datrollout.argus.incidentManipulation.detector.NodeMemoryWatcher: DEBUG
+    dev.datrollout.argus.kubernetes.detector.dev.datrollout.argus.incidentManipulation.detector.MemoryContainerWatcher: DEBUG

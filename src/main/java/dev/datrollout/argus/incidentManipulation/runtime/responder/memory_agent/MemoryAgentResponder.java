@@ -1,4 +1,4 @@
-package dev.datrollout.argus.kubernetes.responder.memory_agent;
+package dev.datrollout.argus.incidentManipulation.runtime.responder.memory_agent;
 
 import com.embabel.agent.api.annotation.AchievesGoal;
 import com.embabel.agent.api.annotation.Action;
@@ -6,10 +6,8 @@ import com.embabel.agent.api.annotation.Agent;
 import com.embabel.agent.api.common.OperationContext;
 import com.embabel.agent.api.common.PlannerType;
 import com.embabel.agent.core.ActionRetryPolicy;
-import dev.datrollout.argus.kubernetes.persistence.ContainerMemoryKubernetesIncident;
-import dev.datrollout.argus.kubernetes.phase.runtime.ContainerMemoryKillEventWrapper;
+import dev.datrollout.argus.incidentManipulation.runtime.persistence.ContainerMemoryKubernetesIncident;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 

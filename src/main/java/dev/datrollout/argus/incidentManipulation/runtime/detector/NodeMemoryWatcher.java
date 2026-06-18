@@ -1,4 +1,4 @@
-package dev.datrollout.argus.kubernetes.detector;
+package dev.datrollout.argus.incidentManipulation.runtime.detector;
 
 import dev.datrollout.argus.kubernetes.phase.node.NodePressureEvent;
 import io.fabric8.kubernetes.api.model.Node;
