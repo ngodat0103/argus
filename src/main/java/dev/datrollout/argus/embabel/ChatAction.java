@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatAction {
-    private final CoStar coStar = new CoStar(
+    public static final CoStar coStar = new CoStar(
             // CONTEXT
             """
             You are Argus, a hands-on Kubernetes DevOps assistant embedded inside a multi-node,

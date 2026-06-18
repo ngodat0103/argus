@@ -2,8 +2,10 @@ package dev.datrollout.argus.incidentManipulation.runtime.responder;
 
 import com.embabel.agent.api.invocation.AgentInvocation;
 import com.embabel.agent.core.AgentPlatform;
+import com.embabel.agent.core.ProcessOptions;
+import com.embabel.agent.core.Verbosity;
+import dev.datrollout.argus.incidentManipulation.event.ContainerMemoryKillKubernetesEvent;
 import dev.datrollout.argus.incidentManipulation.runtime.persistence.ContainerMemoryKubernetesIncident;
-
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +24,15 @@ public class KubernetesEventListener {
     private static final Duration TIMEOUT_DURATION = Duration.ofMinutes(2);
 
     @EventListener
-    public void onContainerMemoryKillEvent(ContainerMemoryKillEventWrapper containerMemoryKillEventWrapper) {
-
+    public void onContainerMemoryKillEvent(ContainerMemoryKillKubernetesEvent containerMemoryKillEventWrapper) {
+        ProcessOptions processOptions = ProcessOptions.DEFAULT;
+        Verbosity verbosity = new Verbosity().withShowPrompts(true).withDebug(true);
+        processOptions.withVerbosity(verbosity);
         Mono.fromRunnable(() -> {
                     log.info("Received container memory kill event {}", containerMemoryKillEventWrapper);
                     ContainerMemoryKubernetesIncident containerMemoryKubernetesIncident = AgentInvocation.builder(
                                     this.agentPlatform)
+                            .options(processOptions)
                             .build(ContainerMemoryKubernetesIncident.class)
                             .invoke(containerMemoryKillEventWrapper);
                     log.info("Container memory incident created {}", containerMemoryKubernetesIncident);

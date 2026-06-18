@@ -1,5 +1,6 @@
 package dev.datrollout.argus.incidentManipulation.runtime.detector;
 
+import dev.datrollout.argus.incidentManipulation.event.ContainerMemoryKillKubernetesEvent;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.Watch;
@@ -81,10 +82,10 @@ public class MemoryContainerWatcher extends AbstractKubernetesWatcher<Pod> {
                     currentRestartCount,
                     resolveExitCode(cs),
                     resolveReason(cs));
-
-            var memoryKillPodEventWrapper = new ContainerMemoryKillEventWrapper(cs.getName(), pod);
+            ContainerMemoryKillKubernetesEvent containerMemoryKilEvent =
+                    new ContainerMemoryKillKubernetesEvent(pod, cs.getName());
             log.debug("Publishing MemoryKillPodEventWrapper: container={} pod={}/{}", cs.getName(), ns, name);
-            applicationEventPublisher.publishEvent(memoryKillPodEventWrapper);
+            applicationEventPublisher.publishEvent(containerMemoryKilEvent);
             log.debug(
                     "MemoryKillPodEventWrapper published successfully for container={} pod={}/{}",
                     cs.getName(),

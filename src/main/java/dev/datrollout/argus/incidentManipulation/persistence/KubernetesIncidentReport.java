@@ -1,6 +1,7 @@
 package dev.datrollout.argus.incidentManipulation.persistence;
 
-import com.embabel.common.ai.prompt.PromptContributor;
+import com.embabel.agent.api.reference.LlmReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -25,11 +26,12 @@ import lombok.Setter;
 @Setter
 @Getter
 @NoArgsConstructor
-public abstract class KubernetesIncidentReport implements PromptContributor {
+public abstract class KubernetesIncidentReport implements LlmReference {
 
     // ─── Identity ────────────────────────────────────────────────────────────
 
     @Id
+    @JsonIgnore
     private String incidentId; // e.g. "INC-20250616-oomkill-abc12"
 
     private String name; // Human-readable title

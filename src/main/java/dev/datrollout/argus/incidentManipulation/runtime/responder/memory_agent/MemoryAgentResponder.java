@@ -6,10 +6,11 @@ import com.embabel.agent.api.annotation.Agent;
 import com.embabel.agent.api.common.OperationContext;
 import com.embabel.agent.api.common.PlannerType;
 import com.embabel.agent.core.ActionRetryPolicy;
+import dev.datrollout.argus.embabel.ChatAction;
+import dev.datrollout.argus.incidentManipulation.event.ContainerMemoryKillKubernetesEvent;
 import dev.datrollout.argus.incidentManipulation.runtime.persistence.ContainerMemoryKubernetesIncident;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.prompt.PromptTemplate;
 
 @Agent(
         description = "A Agent to investigate and fix memory issues",
@@ -18,44 +19,22 @@ import org.springframework.ai.chat.prompt.PromptTemplate;
 @RequiredArgsConstructor
 public class MemoryAgentResponder {
     private final KubernetesClient kubernetesClient;
-    private final PromptTemplate PROMPT_TEMPLATE = new PromptTemplate("""
-            You are an autonomous SRE agent responding to a Kubernetes OOMKilled incident.
-
-            ## Incident
-            - Namespace: {namespace}
-            - Pod: {podName}
-
-            ## Investigation Steps
-            Use the tools available to you to diagnose the incident:
-            1. Call getContainerMemoryRequest() and getContainerMemoryLimit() to review the resource configuration.
-            2. Call getTerminationDetails() to confirm the OOMKill signal and exit code.
-            3. Call getRestartHistory() to assess whether this is a recurring issue.
-            4. Call getLastContainerLogs() to inspect the application behavior immediately before the crash.
-
-            ## Root-Cause Classification
-            Determine which category applies:
-            - Memory leak: gradual RSS growth, high restart count, no clear burst trigger
-            - Burst workload: sudden spike, low restart count, typically load-correlated
-            - Misconfigured limit: limit is too low relative to normal steady-state usage
-
-            ## Required Output
-            Produce a concise incident summary containing:
-            - Root cause hypothesis and confidence (0.0-1.0)
-            - Whether immediate remediation is required
-            - Suggested memory limit in bytes and the percentage increase over current limit
-            """);
+    private static final String INVESTIGATION_PROMPT = """
+        A Memory incident have been detected, using the Tools to investigate. After that generate Execution summary For Senior DevOps Engineer to review
+        """;
 
     @Action
     @AchievesGoal(description = "A report about memory issues")
     public ContainerMemoryKubernetesIncident investigateMemoryIssues(
-            OperationContext operationContext, ContainerMemoryKillEventWrapper containerMemoryKillEventWrapper) {
-        String renderedPrompt = "";
-        ContainerMemoryKubernetesIncident containerMemoryKubernetesIncident = operationContext
+            OperationContext operationContext, ContainerMemoryKillKubernetesEvent containerMemoryKillKubernetesEvent) {
+        String executionSummary = operationContext
                 .ai()
-                .withDefaultLlm()
-                .withPromptContributor(containerMemoryKillEventWrapper)
-                .withReference(containerMemoryKillEventWrapper)
-                .createObject(renderedPrompt,ContainerMemoryKubernetesIncident.class);
+                .withLlmByRole("reasoning")
+                .withPromptContributor(ChatAction.coStar)
+                .withReference(containerMemoryKillKubernetesEvent)
+                .generateText(INVESTIGATION_PROMPT);
+        ContainerMemoryKubernetesIncident containerMemoryKubernetesIncident = new ContainerMemoryKubernetesIncident();
+        containerMemoryKubernetesIncident.setExecutionSummary(executionSummary);
         return containerMemoryKubernetesIncident;
     }
 }

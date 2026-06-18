@@ -26,7 +26,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.reactive.ClientHttpConnector;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration(proxyBeanMethods = true)
 @ConditionalOnBean(ConversationFactory.class)
@@ -49,12 +52,20 @@ public class DeepSeekChatbotConfiguration extends DeepSeekModelsConfig {
     RestClient.Builder restClientBuilder() {
         HttpClient httpClient = HttpClient.newBuilder()
                 .executor(executorService)
-                .connectTimeout(Duration.ofSeconds(30))
-                .version(HttpClient.Version.HTTP_2)
+                .connectTimeout(Duration.ofMinutes(1))
+                .version(HttpClient.Version.HTTP_1_1)
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(Duration.ofMinutes(3));
         return RestClient.builder().requestFactory(requestFactory);
+    }
+
+    @Bean
+    WebClient.Builder webClientBuilder() {
+        reactor.netty.http.client.HttpClient httpClient = reactor.netty.http.client.HttpClient.create();
+        httpClient.responseTimeout(Duration.ofMinutes(3));
+        ClientHttpConnector clientHttpConnector = new ReactorClientHttpConnector(httpClient);
+        return WebClient.builder().clientConnector(clientHttpConnector);
     }
 
     @Bean
@@ -72,6 +83,7 @@ public class DeepSeekChatbotConfiguration extends DeepSeekModelsConfig {
                 .apiKey(deepSeekProperties.getApiKey())
                 .baseUrl(deepSeekProperties.getBaseUrl())
                 .restClientBuilder(this.restClientBuilder())
+                .webClientBuilder(this.webClientBuilder())
                 .build();
     }
 

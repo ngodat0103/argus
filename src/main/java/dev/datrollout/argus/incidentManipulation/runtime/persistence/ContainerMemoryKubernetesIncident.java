@@ -1,6 +1,7 @@
 package dev.datrollout.argus.incidentManipulation.runtime.persistence;
 
 import com.embabel.agent.api.annotation.LlmTool;
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import dev.datrollout.argus.incidentManipulation.persistence.KubernetesIncidentReport;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerState;
@@ -9,7 +10,6 @@ import io.fabric8.kubernetes.api.model.ContainerStatus;
 import io.fabric8.kubernetes.api.model.Pod;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-
 import java.util.List;
 import java.util.Optional;
 import lombok.Getter;
@@ -26,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 @Getter
 @Setter
 @NoArgsConstructor
+@JsonClassDescription(value = "Description here, which is render as jsonSchema for LLM to see")
 public class ContainerMemoryKubernetesIncident extends KubernetesIncidentReport {
 
     // ─── Container Identity ──────────────────────────────────────────────────
@@ -203,5 +204,15 @@ public class ContainerMemoryKubernetesIncident extends KubernetesIncidentReport 
         sb.append("- `getLastContainerLogs()` — application output immediately before the crash\n");
 
         return sb.toString();
+    }
+
+    @Override
+    public @NotNull String notes() {
+        return "";
+    }
+
+    @Override
+    public @NotNull String getDescription() {
+        return "";
     }
 }
