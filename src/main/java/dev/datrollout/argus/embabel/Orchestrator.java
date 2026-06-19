@@ -2,11 +2,14 @@ package dev.datrollout.argus.embabel;
 
 import com.embabel.agent.api.annotation.Action;
 import com.embabel.agent.api.annotation.EmbabelComponent;
+import com.embabel.agent.api.annotation.Provided;
 import com.embabel.agent.api.common.ActionContext;
 import com.embabel.agent.api.common.OperationContext;
 import com.embabel.agent.prompt.persona.CoStar;
 import com.embabel.chat.Conversation;
 import com.embabel.chat.UserMessage;
+import dev.datrollout.argus.incidentManipulation.KubernetesEventResponderChain;
+import dev.datrollout.argus.incidentManipulation.event.KubernetesEvent;
 import dev.datrollout.argus.kubernetes.embabel.ConfigMapUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.EventsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.KubernetesResourceUnfoldingTool;
@@ -22,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @EmbabelComponent
 @RequiredArgsConstructor
 @Slf4j
-public class ChatAction {
+public class Orchestrator {
     public static final CoStar coStar = new CoStar(
             // CONTEXT
             """
@@ -139,5 +142,13 @@ public class ChatAction {
                 .withTool(secretUnfoldingTool)
                 .respond(conversation.getMessages());
         actionContext.sendAndSave(Objects.requireNonNull(assistantMessage));
+    }
+
+    @Action(trigger = KubernetesEvent.class, clearBlackboard = true)
+    public void onKubernetesIncident(
+            @Provided KubernetesEventResponderChain kubernetesEventResponderChain,
+            ActionContext actionContext,
+            KubernetesEvent kubernetesEvent, OperationContext operationContext) {
+        kubernetesEventResponderChain.delegate(kubernetesEvent,operationContext,actionContext);
     }
 }

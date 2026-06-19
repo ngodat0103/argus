@@ -7,16 +7,16 @@ import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
 @Getter
-public abstract class AbstractKubernetesEvent extends ApplicationEvent implements LlmReference {
+public abstract class KubernetesEvent extends ApplicationEvent implements LlmReference {
     protected Pod associatedPod;
     protected Event associatedEvent;
 
-    public AbstractKubernetesEvent(Pod associatedPod) {
+    public KubernetesEvent(Pod associatedPod) {
         super(associatedPod);
         this.associatedPod = associatedPod;
     }
 
-    public AbstractKubernetesEvent(Event associatedEvent) {
+    public KubernetesEvent(Event associatedEvent) {
         super(associatedEvent);
         this.associatedEvent = associatedEvent;
     }

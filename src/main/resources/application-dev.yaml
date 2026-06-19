@@ -1,4 +1,3 @@
-
 spring:
   jpa:
     hibernate:
@@ -11,7 +10,3 @@ spring:
     password: argus
 totp:
   issuer: "[dev] Argus Telegram Agent"
-logging:
-  level:
-    dev.datrollout.argus.kubernetes.detector.dev.datrollout.argus.incidentManipulation.detector.NodeMemoryWatcher: DEBUG
-    dev.datrollout.argus.kubernetes.detector.dev.datrollout.argus.incidentManipulation.detector.MemoryContainerWatcher: DEBUG

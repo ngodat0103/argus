@@ -1,54 +1,24 @@
 package dev.datrollout.argus.incidentManipulation.runtime.responder;
 
-import com.embabel.agent.api.invocation.AgentInvocation;
-import com.embabel.agent.core.AgentPlatform;
-import com.embabel.agent.core.ProcessOptions;
-import com.embabel.agent.core.Verbosity;
+import com.embabel.chat.Chatbot;
 import dev.datrollout.argus.incidentManipulation.event.ContainerMemoryKillKubernetesEvent;
-import dev.datrollout.argus.incidentManipulation.runtime.persistence.ContainerMemoryKubernetesIncident;
-import java.time.Duration;
-import java.util.concurrent.TimeoutException;
+import dev.datrollout.argus.telegram.TelegramOutputChannel;
+import dev.datrollout.argus.telegram.TelegramUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChat;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class KubernetesEventListener {
-    private final AgentPlatform agentPlatform;
-    private final Scheduler scheduler;
-    private static final Duration TIMEOUT_DURATION = Duration.ofMinutes(2);
+    private final Chatbot chatbot;
+    private final TelegramClient telegramClient;
 
     @EventListener
     public void onContainerMemoryKillEvent(ContainerMemoryKillKubernetesEvent containerMemoryKillEventWrapper) {
-        ProcessOptions processOptions = ProcessOptions.DEFAULT;
-        Verbosity verbosity = new Verbosity().withShowPrompts(true).withDebug(true);
-        processOptions.withVerbosity(verbosity);
-        Mono.fromRunnable(() -> {
-                    log.info("Received container memory kill event {}", containerMemoryKillEventWrapper);
-                    ContainerMemoryKubernetesIncident containerMemoryKubernetesIncident = AgentInvocation.builder(
-                                    this.agentPlatform)
-                            .options(processOptions)
-                            .build(ContainerMemoryKubernetesIncident.class)
-                            .invoke(containerMemoryKillEventWrapper);
-                    log.info("Container memory incident created {}", containerMemoryKubernetesIncident);
-                })
-                .timeout(TIMEOUT_DURATION)
-                .subscribeOn(this.scheduler)
-                .subscribe(null, error -> {
-                    if (error instanceof TimeoutException timeoutException) {
-                        log.error(
-                                "Agent platform did not respond within {}: {}",
-                                TIMEOUT_DURATION,
-                                containerMemoryKillEventWrapper,
-                                timeoutException);
-                    } else {
-                        log.error("Unexpected error processing OOM event", error);
-                    }
-                });
     }
 }

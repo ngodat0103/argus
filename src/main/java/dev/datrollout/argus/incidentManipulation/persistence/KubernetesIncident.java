@@ -26,7 +26,7 @@ import lombok.Setter;
 @Setter
 @Getter
 @NoArgsConstructor
-public abstract class KubernetesIncidentReport implements LlmReference {
+public abstract class KubernetesIncident implements LlmReference {
 
     // ─── Identity ────────────────────────────────────────────────────────────
 

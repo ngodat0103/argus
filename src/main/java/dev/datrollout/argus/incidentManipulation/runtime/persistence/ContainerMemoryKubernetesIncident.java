@@ -2,7 +2,7 @@ package dev.datrollout.argus.incidentManipulation.runtime.persistence;
 
 import com.embabel.agent.api.annotation.LlmTool;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
-import dev.datrollout.argus.incidentManipulation.persistence.KubernetesIncidentReport;
+import dev.datrollout.argus.incidentManipulation.persistence.KubernetesIncident;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerState;
 import io.fabric8.kubernetes.api.model.ContainerStateTerminated;
@@ -27,7 +27,7 @@ import org.jetbrains.annotations.NotNull;
 @Setter
 @NoArgsConstructor
 @JsonClassDescription(value = "Description here, which is render as jsonSchema for LLM to see")
-public class ContainerMemoryKubernetesIncident extends KubernetesIncidentReport {
+public class ContainerMemoryKubernetesIncident extends KubernetesIncident {
 
     // ─── Container Identity ──────────────────────────────────────────────────
     private String podName;

@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 
-public class ContainerMemoryKillKubernetesEvent extends AbstractKubernetesEvent {
+public class ContainerMemoryKillKubernetesEvent extends KubernetesEvent {
 
     private final String failedContainerName;
 
