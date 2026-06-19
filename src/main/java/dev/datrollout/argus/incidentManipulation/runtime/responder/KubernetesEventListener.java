@@ -2,13 +2,10 @@ package dev.datrollout.argus.incidentManipulation.runtime.responder;
 
 import com.embabel.chat.Chatbot;
 import dev.datrollout.argus.incidentManipulation.event.ContainerMemoryKillKubernetesEvent;
-import dev.datrollout.argus.telegram.TelegramOutputChannel;
-import dev.datrollout.argus.telegram.TelegramUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChat;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Component
@@ -19,6 +16,5 @@ public class KubernetesEventListener {
     private final TelegramClient telegramClient;
 
     @EventListener
-    public void onContainerMemoryKillEvent(ContainerMemoryKillKubernetesEvent containerMemoryKillEventWrapper) {
-    }
+    public void onContainerMemoryKillEvent(ContainerMemoryKillKubernetesEvent containerMemoryKillEventWrapper) {}
 }

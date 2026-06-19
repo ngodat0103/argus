@@ -12,13 +12,14 @@ public class KubernetesEventResponderChain {
 
     public KubernetesEventResponderChain(List<KubernetesEventResponder> responders) {
         for (int i = 0; i < responders.size() - 1; i++) {
-            responders.set(i, responders.get(i + 1));
+            KubernetesEventResponder responder = responders.get(i);
+            responder.setNext(responders.get(i + 1));
         }
         this.firstResponder = responders.getFirst();
     }
 
     public void delegate(
             KubernetesEvent kubernetesEvent, OperationContext operationContext, ActionContext actionContext) {
-        this.firstResponder.doInternal(kubernetesEvent, operationContext, actionContext);
+        this.firstResponder.respond(kubernetesEvent, operationContext, actionContext);
     }
 }
