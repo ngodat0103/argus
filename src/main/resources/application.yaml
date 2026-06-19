@@ -53,9 +53,11 @@ embabel:
         prompts:
           default-timeout: 300s
       tools:
-        lazy-init: true
+        lazy-init: false
       scanning:
         bean: true
+      threading:
+        shared: true
   models:
     default-llm: deepseek-chat
     llms:

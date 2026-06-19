@@ -9,7 +9,7 @@ plugins {
 group = "dev.datrollout"
 version = "0.2.0"
 description = "argus"
-val embabelAgentVersion = "0.4.0"
+val embabelAgentVersion = "0.5.0"
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(26)

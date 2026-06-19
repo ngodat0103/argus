@@ -19,9 +19,12 @@ import dev.datrollout.argus.kubernetes.embabel.NetworkingDebuggingUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.SchedulingDiagnosticsUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.SecretUnfoldingTool;
 import dev.datrollout.argus.kubernetes.embabel.WorkloadStateUnfoldingTool;
+import dev.datrollout.argus.telegram.TelegramOutputChannel;
+import dev.datrollout.argus.telegram.TelegramUserReference;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @EmbabelComponent
 @RequiredArgsConstructor
@@ -38,11 +41,20 @@ public class Orchestrator {
     private final SecretUnfoldingTool secretUnfoldingTool;
 
     @Action(trigger = UserMessage.class, clearBlackboard = true)
-    public void defaultChat(Conversation conversation, OperationContext operationContext, ActionContext actionContext) {
+    public void defaultChat(
+            Conversation conversation,
+            @Provided TelegramClient telegramClient,
+            OperationContext operationContext,
+            ActionContext actionContext) {
+        TelegramOutputChannel telegramOutputChannel =
+                (TelegramOutputChannel) operationContext.getProcessContext().getOutputChannel();
+        TelegramUserReference telegramuserReference =
+                new TelegramUserReference(telegramOutputChannel.getUserMessage(), telegramClient);
         var assistantMessage = operationContext
                 .ai()
                 .withLlmByRole("reasoning")
                 .withPromptContributor(coStar)
+                .withReference(telegramuserReference)
                 .withTool(kubernetesResourceUnfoldingTool)
                 .withTool(networkingDebuggingUnfoldingTool)
                 .withTool(logsUnfoldingTool)

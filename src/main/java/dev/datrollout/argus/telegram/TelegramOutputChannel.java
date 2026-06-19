@@ -5,6 +5,7 @@ import com.embabel.agent.api.channel.OutputChannel;
 import com.embabel.agent.api.channel.OutputChannelEvent;
 import com.embabel.agent.api.channel.ProgressOutputChannelEvent;
 import com.embabel.chat.AssistantMessage;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,9 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 @Slf4j
 @RequiredArgsConstructor
 public class TelegramOutputChannel implements OutputChannel {
+    @Getter
     private final Message userMessage;
+
     private final TelegramClient telegramClient;
     private Integer progressMessageId = null;
 
