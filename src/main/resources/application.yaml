@@ -68,8 +68,3 @@ totp:
   otp-prompt: |-
       🔐 Two-factor authentication required
       Open your authenticator app and *reply to this message* with the 6 digit code.
-github:
-  app:
-    id: Iv23liRlrYyxMZRwgTuI
-    private-key-path: /home/akira/code/argus/homelab-datnvm.2026-07-04.private-key.pem
-    token-refresh-margin: 10m

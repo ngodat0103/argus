@@ -1,4 +1,4 @@
-package dev.datrollout.argus.github;
+package dev.datrollout.argus.github.client;
 
 import java.security.PrivateKey;
 import org.kohsuke.github.GitHub;

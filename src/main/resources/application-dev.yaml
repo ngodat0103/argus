@@ -10,3 +10,9 @@ spring:
     password: argus
 totp:
   issuer: "[dev] Argus Telegram Agent"
+github:
+  app:
+    id: Iv23liRlrYyxMZRwgTuI
+    private-key-path: /home/akira/code/argus/homelab-datnvm.2026-07-04.private-key.pem
+    token-refresh-margin: 10m
+    secret: ${GITHUB_APP_SECRET}

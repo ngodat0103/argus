@@ -28,6 +28,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    networks:
+      argus-dev:
+        ipv4_address: 192.168.29.3
+    command:
+      - "http"
+      - "192.168.29.1:3103"
+      - "--log=stdout"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
 volumes:
   postgres_data:
 networks:

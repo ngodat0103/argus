@@ -1,4 +1,4 @@
-package dev.datrollout.argus.github;
+package dev.datrollout.argus.github.client;
 
 import io.jsonwebtoken.Jwts;
 import java.io.StringReader;

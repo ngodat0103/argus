@@ -1,6 +1,8 @@
-package dev.datrollout.argus.github;
+package dev.datrollout.argus.github.client;
 
 import java.time.Duration;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -23,57 +25,31 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class GitHubAppProperties {
 
     /** GitHub App ID (numeric). Found on the app settings page. Different from the client ID. */
+    @Setter
+    @Getter
     private String id;
 
     /** Private key PEM contents. Use this OR privateKeyPath, not both. */
+    @Setter
+    @Getter
     private String privateKey;
 
     /** Filesystem path to the private key PEM. Convenient for Kubernetes secret mounts. */
+    @Setter
+    @Getter
     private String privateKeyPath;
 
     /** GitHub API endpoint. Override for GitHub Enterprise (e.g. https://ghe.acme.com/api/v3). */
+    @Setter
+    @Getter
     private String apiUrl = "https://api.github.com";
 
     /** Refresh the installation token this long before it actually expires. */
+    @Setter
+    @Getter
     private Duration tokenRefreshMargin = Duration.ofMinutes(5);
 
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getPrivateKey() {
-        return privateKey;
-    }
-
-    public void setPrivateKey(String privateKey) {
-        this.privateKey = privateKey;
-    }
-
-    public String getPrivateKeyPath() {
-        return privateKeyPath;
-    }
-
-    public void setPrivateKeyPath(String privateKeyPath) {
-        this.privateKeyPath = privateKeyPath;
-    }
-
-    public String getApiUrl() {
-        return apiUrl;
-    }
-
-    public void setApiUrl(String apiUrl) {
-        this.apiUrl = apiUrl;
-    }
-
-    public Duration getTokenRefreshMargin() {
-        return tokenRefreshMargin;
-    }
-
-    public void setTokenRefreshMargin(Duration tokenRefreshMargin) {
-        this.tokenRefreshMargin = tokenRefreshMargin;
-    }
+    @Getter
+    @Setter
+    private String secret;
 }
