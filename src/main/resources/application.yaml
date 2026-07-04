@@ -4,7 +4,6 @@ logging:
   pattern:
     console: "%clr(%d{${LOG_DATEFORMAT_PATTERN:-dd-MM-yyyy HH:mm:ss.SSS}}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr([%t]){faint} %clr(%logger{0}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
     dateformat: "dd-MM-yyyy HH:mm:ss.SSS"
-
 spring:
   threads:
     virtual:
@@ -69,3 +68,8 @@ totp:
   otp-prompt: |-
       🔐 Two-factor authentication required
       Open your authenticator app and *reply to this message* with the 6 digit code.
+github:
+  app:
+    id: Iv23liRlrYyxMZRwgTuI
+    private-key-path: /home/akira/code/argus/homelab-datnvm.2026-07-04.private-key.pem
+    token-refresh-margin: 10m

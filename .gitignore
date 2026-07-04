@@ -49,3 +49,4 @@ build/
 /.env
 /change.diff
 /.secrets
+/homelab-datnvm.2026-07-04.private-key.pem
