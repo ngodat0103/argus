@@ -79,6 +79,7 @@ dependencies {
 
     // Github Integration
     implementation("org.kohsuke:github-api:1.330")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:7.7.0.202606012155-r")
 
     // JWT signing (JJWT)
     implementation("io.jsonwebtoken:jjwt-api:${jjwtVersion}")

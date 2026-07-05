@@ -9,7 +9,9 @@ EVENT="${1:-push}"
 if [ "$EVENT" = "push" ]; then
   PAYLOAD='{
     "ref": "refs/heads/main",
-    "repository": { "full_name": "ngodat0103/homelab", "owner": { "login": "ngodat0103" } },
+    "before": "b1de5c49b238393b09a56d54344f0762fb47b34b",
+    "after":  "29066545fd7476fbb0dd4e02dfb588ddb7318274",
+    "repository": { "full_name": "ngodat0103/dev-oops", "owner": { "login": "ngodat0103" } },
     "pusher": { "name": "ngodat0103" }
   }'
 elif [ "$EVENT" = "pull_request" ]; then
@@ -17,7 +19,7 @@ elif [ "$EVENT" = "pull_request" ]; then
     "action": "opened",
     "number": 1,
     "pull_request": { "number": 1, "title": "Test PR" },
-    "repository": { "full_name": "ngodat0103/homelab", "owner": { "login": "ngodat0103" } }
+    "repository": { "full_name": "ngodat0103/dev-oops", "owner": { "login": "ngodat0103" } }
   }'
 else
   echo "Usage: $0 [push|pull_request]"
