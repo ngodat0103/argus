@@ -7,9 +7,10 @@ plugins {
 }
 
 group = "dev.datrollout"
-version = "0.2.0"
+version = "0.3.0"
 description = "argus"
-val embabelAgentVersion = "0.4.0"
+val embabelAgentVersion = "0.5.0"
+val jjwtVersion = "0.13.0"
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(26)
@@ -75,6 +76,16 @@ dependencies {
 
     // Kubernetes API library
     implementation("io.fabric8:kubernetes-client:7.3.2")
+
+    // Github Integration
+    implementation("org.kohsuke:github-api:1.330")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:7.7.0.202606012155-r")
+
+    // JWT signing (JJWT)
+    implementation("io.jsonwebtoken:jjwt-api:${jjwtVersion}")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:${jjwtVersion}")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:${jjwtVersion}")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
 
     // Utils
     implementation("org.projectlombok:lombok")

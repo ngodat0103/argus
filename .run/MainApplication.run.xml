@@ -10,6 +10,7 @@
     </selectedOptions>
     <option name="SPRING_BOOT_MAIN_CLASS" value="dev.datrollout.argus.MainApplication" />
     <option name="VM_PARAMETERS" value="-Xms256m -Xmx256m -XX:+UseSerialGC -XX:ActiveProcessorCount=2" />
+    <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
