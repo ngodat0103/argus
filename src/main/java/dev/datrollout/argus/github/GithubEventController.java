@@ -6,6 +6,8 @@ import com.embabel.agent.core.AgentPlatform;
 import com.embabel.agent.core.ProcessOptions;
 import com.embabel.agent.core.Verbosity;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.datrollout.argus.github.embabel.DocSyncResult;
+import dev.datrollout.argus.github.embabel.GithubStatusOutputChannel;
 import dev.datrollout.argus.github.event.GHPullRequestEvent;
 import dev.datrollout.argus.github.event.GHPushEvent;
 import lombok.RequiredArgsConstructor;

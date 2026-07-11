@@ -38,7 +38,7 @@ public class GitHubAppClientRegistry {
 
     private final Map<String, CachedClient> cache = new ConcurrentHashMap<>();
 
-    private record CachedClient(GitHub github, Instant expiresAt) {}
+    private record CachedClient(GitHub github, String token, Instant expiresAt) {}
 
     public GitHubAppClientRegistry(GitHubAppJwt jwtGenerator, String apiUrl, Duration refreshMargin) {
         this.jwtGenerator = jwtGenerator;
@@ -58,6 +58,21 @@ public class GitHubAppClientRegistry {
             cached = refresh(login);
         }
         return cached.github();
+    }
+
+    /**
+     * Returns a fresh installation access token for the given account/org login, suitable for git
+     * HTTPS auth (use it as the password with username {@code x-access-token}). Cached and
+     * auto-refreshed alongside the client.
+     *
+     * @param login the GitHub account or org that installed the app (e.g. "datnvm")
+     */
+    public String installationTokenFor(String login) {
+        CachedClient cached = cache.get(login);
+        if (cached == null || Instant.now().isAfter(cached.expiresAt().minus(refreshMargin))) {
+            cached = refresh(login);
+        }
+        return cached.token();
     }
 
     /** Lists the logins of every account/org that has installed this app. */
@@ -105,8 +120,8 @@ public class GitHubAppClientRegistry {
                     .withAppInstallationToken(token.getToken())
                     .build();
 
-            CachedClient fresh =
-                    new CachedClient(installationClient, token.getExpiresAt().toInstant());
+            CachedClient fresh = new CachedClient(
+                    installationClient, token.getToken(), token.getExpiresAt().toInstant());
             cache.put(login, fresh);
             log.info("Refreshed GitHub installation token for '{}' (expires {})", login, fresh.expiresAt());
             return fresh;

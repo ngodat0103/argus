@@ -1,10 +1,9 @@
-package dev.datrollout.argus.github;
+package dev.datrollout.argus.github.embabel;
 
 import com.embabel.agent.api.channel.MessageOutputChannelEvent;
 import com.embabel.agent.api.channel.OutputChannel;
 import com.embabel.agent.api.channel.OutputChannelEvent;
 import com.embabel.agent.api.channel.ProgressOutputChannelEvent;
-import com.embabel.agent.api.event.*;
 import com.embabel.agent.core.AgentProcess;
 import com.embabel.agent.core.Blackboard;
 import com.embabel.chat.AssistantMessage;
