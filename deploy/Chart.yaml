@@ -1,0 +1,11 @@
+apiVersion: v2
+name: argus
+description: Argus - AI-powered Kubernetes & GitHub operations agent
+type: application
+
+# IMPORTANT: keep `version` and `appVersion` equal, and make sure a matching
+# container image tag (ghcr.io/ngodat0103/argus:<appVersion>) has been published
+# before rolling out. The deployment derives the image tag from `.Chart.AppVersion`
+# when `image.tag` is left empty, so this single number is the source of truth.
+version: 0.3.0
+appVersion: "0.3.0"
