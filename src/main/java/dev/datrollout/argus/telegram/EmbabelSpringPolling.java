@@ -4,8 +4,8 @@ import com.embabel.chat.ChatSession;
 import com.embabel.chat.Chatbot;
 import com.embabel.chat.UserMessage;
 import dev.datrollout.argus.ThreadConfiguration;
-import dev.datrollout.argus.embabel.persistence.ConversationJpaRepository;
-import dev.datrollout.argus.embabel.persistence.PostgresqlConversation;
+import dev.datrollout.argus.platform.persistence.ConversationJpaRepository;
+import dev.datrollout.argus.platform.persistence.PostgresqlConversation;
 import dev.datrollout.argus.totp.ConfirmationHandler;
 import dev.datrollout.argus.totp.TotpSetupService;
 import java.time.LocalDate;
@@ -194,7 +194,7 @@ public class EmbabelSpringPolling implements SpringLongPollingBot, LongPollingUp
         if (from.getUserName() != null && !from.getUserName().isBlank()) {
             return from.getUserName();
         }
-        String name = from.getFirstName() != null ? from.getFirstName() : "";
+        String name = from.getFirstName();
         if (from.getLastName() != null && !from.getLastName().isBlank()) {
             name = name + " " + from.getLastName();
         }

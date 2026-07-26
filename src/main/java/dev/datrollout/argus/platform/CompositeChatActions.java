@@ -1,4 +1,4 @@
-package dev.datrollout.argus.embabel;
+package dev.datrollout.argus.platform;
 
 import com.embabel.agent.api.annotation.Action;
 import com.embabel.agent.api.annotation.EmbabelComponent;
@@ -22,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 @EmbabelComponent
 @RequiredArgsConstructor
 @Slf4j
-public class ChatAction {
+public class CompositeChatActions {
     private final CoStar coStar = new CoStar(
             // CONTEXT
             """

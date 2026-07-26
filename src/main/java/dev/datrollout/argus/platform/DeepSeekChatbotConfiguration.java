@@ -1,19 +1,23 @@
-package dev.datrollout.argus.embabel;
+package dev.datrollout.argus.platform;
 
+import com.embabel.agent.api.common.PlannerType;
+import com.embabel.agent.api.invocation.UtilityInvocation;
 import com.embabel.agent.api.models.DeepSeekModels;
 import com.embabel.agent.config.models.deepseek.DeepSeekModelsConfig;
 import com.embabel.agent.config.models.deepseek.DeepSeekProperties;
-import com.embabel.agent.core.AgentPlatform;
-import com.embabel.agent.core.Verbosity;
+import com.embabel.agent.core.*;
 import com.embabel.agent.spi.support.springai.SpringAiLlmService;
 import com.embabel.chat.Chatbot;
 import com.embabel.chat.ConversationFactory;
 import com.embabel.chat.agent.AgentProcessChatbot;
+import com.embabel.chat.agent.AgentSource;
+import com.embabel.chat.agent.ListenerProvider;
 import com.embabel.common.ai.model.OptionsConverter;
 import dev.datrollout.argus.ThreadConfiguration;
 import io.micrometer.observation.ObservationRegistry;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.deepseek.DeepSeekChatModel;
@@ -37,11 +41,11 @@ public class DeepSeekChatbotConfiguration extends DeepSeekModelsConfig {
     public DeepSeekChatbotConfiguration(
             @Value("DEEPSEEK_BASE_URL") String envBaseUrl,
             @Value("DEEPSEEK_API_KEY") String envApiKey,
-            @NotNull DeepSeekProperties properties,
+            @NotNull DeepSeekProperties deepSeekProperties,
             @Qualifier(ThreadConfiguration.VIRTUAL_THREAD) ExecutorService executorService,
             @NotNull ObjectProvider<ObservationRegistry> observationRegistry) {
-        super(envBaseUrl, envApiKey, properties, observationRegistry);
-        this.deepSeekProperties = properties;
+        super(envBaseUrl, envApiKey, deepSeekProperties, observationRegistry);
+        this.deepSeekProperties = deepSeekProperties;
         this.executorService = executorService;
     }
 
@@ -61,8 +65,18 @@ public class DeepSeekChatbotConfiguration extends DeepSeekModelsConfig {
     Chatbot chatbot(ConversationFactory conversationFactory, AgentPlatform agentPlatform) {
         Verbosity verbosity =
                 new Verbosity().withDebug(true).withShowLlmResponses(true).withShowPrompts(true);
-        Chatbot chatbot = AgentProcessChatbot.utilityFromPlatform(agentPlatform, conversationFactory, verbosity);
-        return chatbot;
+        AgentSource agentSource = _ -> {
+            ProcessOptions processOptions = new ProcessOptions()
+                    .withAdditionalEarlyTerminationPolicy(EarlyTerminationPolicy.maxTokens(200_000))
+                    .withAdditionalEarlyTerminationPolicy(EarlyTerminationPolicy.maxActions(10));
+
+            return UtilityInvocation.on(agentPlatform)
+                    .withProcessOptions(processOptions)
+                    .createPlatformAgent();
+        };
+        ListenerProvider listenerProvider = (_, _) -> List.of(); // Todo Temporary NoOps
+        return new AgentProcessChatbot(
+                agentPlatform, agentSource, conversationFactory, listenerProvider, PlannerType.UTILITY, verbosity);
     }
 
     @Bean
@@ -77,13 +91,13 @@ public class DeepSeekChatbotConfiguration extends DeepSeekModelsConfig {
 
     @Override
     public @NotNull SpringAiLlmService deepSeekReasoner() {
+        String reasoningModelName = "deepseek-v4-pro";
         DeepSeekApi deepSeekApi = this.deepSeekApi();
         DeepSeekChatModel deepSeekChatModel = DeepSeekChatModel.builder()
                 .deepSeekApi(deepSeekApi)
-                .defaultOptions(DeepSeekChatOptions.builder()
-                        .model(DeepSeekApi.ChatModel.DEEPSEEK_REASONER)
-                        .build())
-                .retryTemplate(deepSeekProperties.retryTemplate(DeepSeekApi.ChatModel.DEEPSEEK_REASONER.name()))
+                .defaultOptions(
+                        DeepSeekChatOptions.builder().model(reasoningModelName).build())
+                .retryTemplate(deepSeekProperties.retryTemplate(reasoningModelName))
                 .build();
         return getSpringAiLlmService(deepSeekChatModel);
     }
