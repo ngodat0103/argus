@@ -1,4 +1,4 @@
-package dev.datrollout.argus.embabel.persistence.jackson;
+package dev.datrollout.argus.platform.persistence.jackson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;

@@ -1,4 +1,4 @@
-package dev.datrollout.argus.embabel.persistence;
+package dev.datrollout.argus.platform.persistence;
 
 import com.embabel.agent.api.reference.LlmReference;
 import com.embabel.chat.*;

@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.datrollout"
-version = "0.3.0"
+version = "0.3.2"
 description = "argus"
 val embabelAgentVersion = "1.0.0"
 val jjwtVersion = "0.13.0"

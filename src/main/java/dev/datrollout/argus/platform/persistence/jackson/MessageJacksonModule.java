@@ -1,4 +1,4 @@
-package dev.datrollout.argus.embabel.persistence.jackson;
+package dev.datrollout.argus.platform.persistence.jackson;
 
 import com.embabel.agent.core.hitl.Awaitable;
 import com.embabel.chat.Message;
@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import dev.datrollout.argus.platform.persistence.EnhancedAssistantMessage;
 import java.time.Instant;
 
 /**
@@ -34,7 +35,7 @@ public class MessageJacksonModule extends SimpleModule {
         context.registerSubtypes(
                 com.embabel.chat.UserMessage.class,
                 com.embabel.chat.SystemMessage.class,
-                dev.datrollout.argus.embabel.persistence.EnhancedAssistantMessage.class);
+                EnhancedAssistantMessage.class);
         context.setMixInAnnotations(com.embabel.chat.AssistantMessage.class, AssistantMessageMixin.class);
         context.setMixInAnnotations(com.embabel.chat.UserMessage.class, UserMessageMixin.class);
         context.setMixInAnnotations(com.embabel.chat.SystemMessage.class, SystemMessageMixin.class);

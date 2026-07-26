@@ -1,4 +1,4 @@
-package dev.datrollout.argus.embabel.persistence.jackson;
+package dev.datrollout.argus.platform.persistence.jackson;
 
 import com.embabel.chat.*;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import dev.datrollout.argus.embabel.persistence.EnhancedAssistantMessage;
+import dev.datrollout.argus.platform.persistence.EnhancedAssistantMessage;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
