@@ -10,8 +10,8 @@ EVENT="${1:-push}"
 if [ "$EVENT" = "push" ]; then
   PAYLOAD='{
     "ref": "refs/heads/main",
-    "before": "79593f480dad0167d2b07991217363dffeef1f94",
-    "after":  "52bb02ec49bbf05fd6676c623e3fae155c70ce85",
+    "before": "60bc235faf901d80a7903203991987ec8297f96c",
+    "after":  "85afb1535026be7dfec2c12e21b75e45619ba77f",
     "repository": { "full_name": "ngodat0103/dev-oops", "owner": { "login": "ngodat0103" } },
     "pusher": { "name": "ngodat0103" }
   }'
